@@ -1,0 +1,57 @@
+LIBRARY KxCom
+EXPORTS
+
+	RoInitialize
+	RoUninitialize
+	RoGetActivationFactory
+	RoActivateInstance
+	RoCaptureErrorContext
+	RoOriginateError
+	RoOriginateErrorW
+	RoTransformError
+	RoTransformErrorW
+	RoGetAgileReference
+	RoOriginateLanguageException
+	RoGetBufferMarshaler
+	RoSetErrorReportingFlags
+	RoFailFastWithErrorContext
+
+	GetRestrictedErrorInfo
+	SetRestrictedErrorInfo
+
+	;;
+	;; mta.c
+	;;
+
+	CoIncrementMTAUsage
+	CoDecrementMTAUsage
+
+	;;
+	;; winrt.c
+	;;
+
+	WindowsCompareStringOrdinal
+	WindowsCreateString
+	WindowsCreateStringReference
+	WindowsDeleteString
+	WindowsDuplicateString
+	WindowsGetStringLen
+	WindowsGetStringRawBuffer
+	WindowsIsStringEmpty
+	WindowsStringHasEmbeddedNull
+	WindowsSubstring
+	WindowsSubstringWithSpecifiedLength
+	WindowsConcatString
+	WindowsPreallocateStringBuffer
+	WindowsDeleteStringBuffer
+	WindowsPromoteStringBuffer
+	CreateDispatcherQueueController
+
+	;;
+	;; firefoxpatch.c
+	;;
+
+	CoCreateInstance							= Ext_CoCreateInstance
+	CoCreateInstanceEx							= Ext_CoCreateInstanceEx
+	CoCreateInstanceFromApp						= Ext_CoCreateInstanceEx
+	CoGetClassObject							= Ext_CoGetClassObject

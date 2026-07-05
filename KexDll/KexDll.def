@@ -1,0 +1,138 @@
+LIBRARY "KexDll.dll"
+EXPORTS
+	KexDataInitialize
+	KexInitializePropagation
+	KexDllProtectedFunctionExceptionFilter
+	
+	KexRtlOperatingSystemBitness
+	KexRtlGetNtVersionNumbers
+	KexRtlPathFindFileName
+	KexRtlPathRemoveExtension
+	KexRtlPathReplaceIllegalCharacters
+	KexRtlGetProcessImageBaseName
+	KexRtlQueryKeyValueData
+	KexRtlQueryKeyMultipleValueData
+	KexRtlUnicodeStringEndsWith
+	KexRtlFindUnicodeSubstring
+	KexRtlAdvanceUnicodeString
+	KexRtlRetreatUnicodeString
+	KexRtlSetUnicodeStringBufferEnd
+	KexRtlShiftUnicodeString
+	KexRtlWriteProcessMemory
+	KexRtlCreateDirectoryRecursive
+	KexRtlNtStatusToString
+	KexRtlCreateStringMapper
+	KexRtlDeleteStringMapper
+	KexRtlInsertEntryStringMapper
+	KexRtlLookupEntryStringMapper
+	KexRtlRemoveEntryStringMapper
+	KexRtlApplyStringMapper
+	KexRtlInsertMultipleEntriesStringMapper
+	KexRtlLookupMultipleEntriesStringMapper
+	KexRtlBatchApplyStringMapper
+	KexRtlSectionTableFromRva
+	KexRtlNullTerminateUnicodeString
+	KexRtlCreateUntrustedDirectoryObject
+	KexRtlGenerateRandomData
+	KexRtlGrowFunctionTable
+	KexRtlDecryptMemory
+	KexRtlEncryptMemory
+
+	KexRtlWow64GetProcessMachines
+	KexRtlSetBit
+	KexRtlClearBit
+	KexRtlQueryPackageIdentity
+	KexRtlQueryPackageIdentityEx
+	KexRtlCheckPortableOperatingSystem
+	KexRtlUnsubscribeWnfStateChangeNotification
+	KexRtlQueryWnfStateData
+	KexRtlPublishWnfStateData
+	KexRtlSubscribeWnfStateChangeNotification
+	KexRtlAddGrowableFunctionTable
+	KexRtlDeleteGrowableFunctionTable
+	KexRtlGetSystemTimePrecise
+
+	KexRtlWaitOnAddress
+	KexRtlWakeAddressSingle
+	KexRtlWakeAddressAll
+
+	KexEtwEventSetInformation
+
+	KexLdrGetSystemDllBase
+	KexLdrGetRemoteSystemDllBase
+	KexLdrGetNativeSystemDllBase
+	KexLdrMiniGetProcedureAddress
+	KexLdrFindDllInitRoutine
+	KexLdrGetDllFullName
+	KexLdrGetDllFullNameFromAddress
+	KexLdrGetImageImportSection
+
+	KexLdrLoadDll
+	KexLdrGetDllHandle
+	KexLdrGetDllHandleEx
+	KexLdrGetProcedureAddress
+	KexLdrGetProcedureAddressEx
+
+	KexLdrResolveDelayLoadedAPI
+
+	ApiSetQueryApiSetPresence
+
+	KexHkInstallBasicHook
+	KexHkRemoveBasicHook
+
+	KexMessageBox
+	KexMessageBoxF
+	KexRewriteDllPath
+	KexPatchCpiwSubsystemVersionCheck
+
+	AshExeBaseNameIs
+	AshModuleBaseNameIs
+	AshModuleIsWindowsModule
+
+	KexVtblRewriteInplace
+	KexVtblReleaseRewriteData
+	KexVtblFindOriginalVFTable
+	KexVtblFindRewrittenVFTable
+	KexVtblReplace
+	KexVtblGetReplaceBundles
+	KexVtblReleaseReplaceData
+
+	VxlOpenLog
+	VxlCloseLog
+	VxlQueryInformationLog
+	VxlWriteLogEx
+	VxlReadLog
+	VxlReadMultipleEntriesLog
+	VxlSeverityToText_ENG
+
+	Ext_NtQueryInformationThread
+	Ext_NtSetInformationThread
+	Ext_NtQueryInformationProcess
+	Ext_NtNotifyChangeKey
+	Ext_NtNotifyChangeMultipleKeys
+	Ext_NtCreateSection
+	Ext_NtAssignProcessToJobObject
+
+	Ext_RtlInitializeCriticalSection
+	Ext_RtlInitializeCriticalSectionAndSpinCount
+	Ext_RtlInitializeCriticalSectionEx
+
+	KexNtQuerySystemTime
+	KexNtCreateUserProcess
+	KexNtProtectVirtualMemory
+	KexNtAllocateVirtualMemory
+	KexNtQueryVirtualMemory
+	KexNtFreeVirtualMemory
+	KexNtQueryObject
+	KexNtOpenFile
+	KexNtWriteFile
+	KexNtRaiseHardError
+	KexNtQueryInformationThread
+	KexNtSetInformationThread
+	KexNtNotifyChangeKey
+	KexNtNotifyChangeMultipleKeys
+	KexNtCreateSection
+	KexNtAssignProcessToJobObject
+
+	NtCompareObjects
+	NtQueryWnfStateData

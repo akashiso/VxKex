@@ -1,0 +1,7 @@
+LIBRARY KxD2
+EXPORTS
+	;; factory.c
+
+	;; D2D1CreateFactory is often imported by ordinal, so it must be exported
+	;; by ordinal.
+	D2D1CreateFactory = Ext_D2D1CreateFactory @1

@@ -1,0 +1,29 @@
+LIBRARY KxNet
+EXPORTS
+	;; dns.c
+	DnsQueryEx
+	DnsServiceBrowse
+	DnsServiceBrowseCancel
+
+	;; winhttp.c
+	WinHttpCreateProxyResolver
+	WinHttpGetProxyForUrlEx
+	WinHttpGetProxyResult
+	WinHttpFreeProxyResult
+	WinHttpWebSocketCompleteUpgrade
+	WinHttpWebSocketReceive
+	WinHttpWebSocketSend
+	WinHttpWebSocketClose
+	WinHttpWebSocketShutdown
+
+	;; winsock.c
+	GetHostNameW
+	getaddrinfo = Ext_getaddrinfo
+	GetAddrInfoExA = Ext_GetAddrInfoExA
+	GetAddrInfoExW = Ext_GetAddrInfoExW
+	GetAddrInfoExOverlappedResult
+	GetAddrInfoExCancel
+	
+	;; domain.c
+	NetFreeAadJoinInformation
+	NetGetAadJoinInformation

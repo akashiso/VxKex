@@ -1,0 +1,258 @@
+LIBRARY KxBase	
+EXPORTS
+	;;
+	;; VxKex New Functions
+	;;
+
+	ResolveDelayLoadedAPI				= KexDll.KexLdrResolveDelayLoadedAPI
+
+	;; thread.c
+	GetThreadDescription
+	SetThreadDescription
+	GetCurrentThreadStackLimits
+	SetThreadInformation
+	GetThreadInformation
+	SetThreadSelectedCpuSets
+	SetThreadSelectedCpuSetMasks
+	GetThreadSelectedCpuSets
+	GetThreadSelectedCpuSetMasks
+	SetThreadpoolTimerEx
+	GetSystemCpuSetInformation
+	GetThreadPriority					= Ext_GetThreadPriority
+
+	;; process.c
+	GetProcessInformation
+	SetProcessInformation
+	SetProcessDefaultCpuSets
+	SetProcessDefaultCpuSetMasks
+	GetProcessDefaultCpuSets
+	GetProcessDefaultCpuSetMasks
+	SetProcessMitigationPolicy
+	GetProcessMitigationPolicy
+	IsProcessCritical
+
+	;; pssapi.c
+	PssCaptureSnapshot
+	PssFreeSnapshot
+	PssQuerySnapshot
+	PssWalkMarkerCreate
+	PssWalkMarkerGetPosition
+	PssWalkMarkerSetPosition
+	PssWalkMarkerSeekToBeginning
+	PssWalkMarkerFree
+
+	;; cfgmgr.c
+	CM_Register_Notification
+	CM_Unregister_Notification
+
+	;; module.c
+	LoadPackagedLibrary
+
+	;; misc.c
+	GetOsSafeBootMode
+	GetFirmwareType
+
+	;; geoname.c
+	GetUserDefaultGeoName
+
+	;; file.c
+	CreateFile2
+	GetTempPath2A
+	GetTempPath2W
+	CopyFile2
+	GetOverlappedResultEx
+	GetFileInformationByName
+	GetDiskSpaceInformationW
+	GetDiskSpaceInformationA
+	DeviceIoControl						= Ext_DeviceIoControl
+	WriteFile							= Ext_WriteFile
+	ReadFile							= Ext_ReadFile
+
+	;; time.c
+	GetSystemTimePreciseAsFileTime
+	QueryUnbiasedInterruptTimePrecise
+	GetDynamicTimeZoneInformationEffectiveYears
+	EnumDynamicTimeZoneInformation
+
+	;; appstate.c
+	RegisterAppStateChangeNotification
+	UnregisterAppStateChangeNotification
+
+	;; appmodel.c
+	AppPolicyGetProcessTerminationMethod
+	AppPolicyGetThreadInitializationType
+	AppPolicyGetWindowingModel
+	AppXGetPackageSid
+	AppXFreeMemory
+	GetApplicationUserModelId
+	GetCurrentApplicationUserModelId
+	GetCurrentPackageFamilyName
+	GetCurrentPackageFullName
+	GetCurrentPackageId
+	GetPackageFamilyName
+	GetPackageFullName
+	GetPackagePathByFullName
+	GetPackagePathByFullName2
+	GetPackagesByPackageFamily
+	PackageFamilyNameFromFullName
+	PackageIdFromFullName
+	GetPackagePath
+
+	;; synch.c
+	WaitOnAddress
+	WakeByAddressSingle					= KexDll.KexRtlWakeAddressSingle
+	WakeByAddressAll					= KexDll.KexRtlWakeAddressAll
+	GetOverlappedResultEx
+
+	;; wow64.c
+	IsWow64Process2
+
+	;; vmem.c
+	DiscardVirtualMemory
+	OfferVirtualMemory
+	ReclaimVirtualMemory
+	PrefetchVirtualMemory
+	CreateFileMappingFromApp
+	MapViewOfFileFromApp
+	VirtualAllocFromApp
+	VirtualProtectFromApp
+	OpenFileMappingFromApp
+	MapViewOfFileNuma2
+	UnmapViewOfFile2
+	UnmapViewOfFileEx
+	MapViewOfFile3
+	MapViewOfFile3FromApp
+	VirtualAlloc						= Ext_VirtualAlloc
+	;VirtualAlloc2
+	;VirtualAlloc2FromApp
+
+	;; KexPathCch
+	PathAllocCanonicalize
+	PathAllocCombine
+	PathCchAddBackslash
+	PathCchAddBackslashEx
+	PathCchAddExtension
+	PathCchAppend
+	PathCchAppendEx
+	PathCchCanonicalize
+	PathCchCanonicalizeEx
+	PathCchCombine
+	PathCchCombineEx
+	PathCchFindExtension
+	PathCchIsRoot
+	PathCchRemoveBackslash
+	PathCchRemoveBackslashEx
+	PathCchRemoveExtension
+	PathCchRemoveFileSpec
+	PathCchRenameExtension
+	PathCchSkipRoot
+	PathCchStripPrefix
+	PathCchStripToRoot
+	PathIsUNCEx
+
+	;;
+	;; Forwarders to KxAdvapi
+	;;
+
+	;RegCopyTreeW						= KxAdvapi.RegCopyTreeW
+
+	;;
+	;; Forwarders to KxUser
+	;;
+	
+	CharLowerA							= KxUser.CharLowerA
+	CharLowerBuffA						= KxUser.CharLowerBuffA
+	CharLowerBuffW						= KxUser.CharLowerBuffW
+	CharLowerW							= KxUser.CharLowerW
+	CharNextA							= KxUser.CharNextA
+	CharNextExA							= KxUser.CharNextExA
+	CharNextW							= KxUser.CharNextW
+	CharPrevA							= KxUser.CharPrevA
+	CharPrevExA							= KxUser.CharPrevExA
+	CharPrevW							= KxUser.CharPrevW
+	CharToOemA							= KxUser.CharToOemA
+	CharToOemBuffA						= KxUser.CharToOemBuffA
+	CharToOemBuffW						= KxUser.CharToOemBuffW
+	CharToOemW							= KxUser.CharToOemW
+	CharUpperA							= KxUser.CharUpperA
+	CharUpperBuffA						= KxUser.CharUpperBuffA
+	CharUpperBuffW						= KxUser.CharUpperBuffW
+	CharUpperW							= KxUser.CharUpperW
+	IsCharAlphaA						= KxUser.IsCharAlphaA
+	IsCharAlphaNumericA					= KxUser.IsCharAlphaNumericA
+	IsCharAlphaNumericW					= KxUser.IsCharAlphaNumericW
+	IsCharAlphaW						= KxUser.IsCharAlphaW
+	IsCharLowerA						= KxUser.IsCharLowerA
+	IsCharLowerW						= KxUser.IsCharLowerW
+	IsCharUpperA						= KxUser.IsCharUpperA
+	IsCharUpperW						= KxUser.IsCharUpperW
+
+	;;
+	;; VxKex Extended Functions
+	;;
+
+	;; critsect.c
+	InitializeCriticalSection				= Ext_InitializeCriticalSection
+	InitializeCriticalSectionAndSpinCount	= Ext_InitializeCriticalSectionAndSpinCount
+	InitializeCriticalSectionEx				= Ext_InitializeCriticalSectionEx
+
+	;; process.c
+	IsProcessInJob						= Ext_IsProcessInJob
+	UpdateProcThreadAttribute			= Ext_UpdateProcThreadAttribute
+
+	;; module.c
+	GetModuleHandleA					= Ext_GetModuleHandleA
+	GetModuleHandleW					= Ext_GetModuleHandleW
+	GetModuleHandleExA					= Ext_GetModuleHandleExA
+	GetModuleHandleExW					= Ext_GetModuleHandleExW
+	LoadLibraryA						= Ext_LoadLibraryA
+	LoadLibraryW						= Ext_LoadLibraryW
+	LoadLibraryExA						= Ext_LoadLibraryExA
+	LoadLibraryExW						= Ext_LoadLibraryExW
+	AddDllDirectory						= Ext_AddDllDirectory
+	RemoveDllDirectory					= Ext_RemoveDllDirectory
+	SetDefaultDllDirectories			= Ext_SetDefaultDllDirectories
+	SetDefaultDllDirectoriesW			= Ext_SetDefaultDllDirectories
+	GetProcAddress						= Ext_GetProcAddress
+
+	;; security.c
+	CreateWellKnownSid					= Ext_CreateWellKnownSid
+
+	;; verspoof.c
+	GetVersionExA						= Ext_GetVersionExA
+	GetVersionExW						= Ext_GetVersionExW
+	VerifyVersionInfoW					= Ext_VerifyVersionInfoW
+
+	;; stubs.c
+	DuplicateHandle						= Ext_DuplicateHandle
+
+	;; heap.c
+	HeapCreate							= Ext_HeapCreate
+
+	;; handle.c
+	CompareObjectHandles
+	SetHandleInformation					= Ext_SetHandleInformation
+
+	;; registry.c
+	RegOpenKeyExA						= RegOpenKeyExA_Ext
+	RegOpenKeyExW						= RegOpenKeyExW_Ext
+	RegEnumKeyExA						= RegEnumKeyExA_Ext
+	RegEnumKeyExW						= RegEnumKeyExW_Ext
+	RegGetValueA						= Ext_RegGetValueA
+	RegGetValueW						= Ext_RegGetValueW
+	GetEnvironmentVariableW				= Ext_GetEnvironmentVariableW
+	GetEnvironmentVariable				= Ext_GetEnvironmentVariableW
+
+	;; console.c
+	WriteConsoleA							= Ext_WriteConsoleA
+	WriteConsoleW							= Ext_WriteConsoleW
+	GetConsoleMode							= Ext_GetConsoleMode
+	SetConsoleMode							= Ext_SetConsoleMode
+	FreeConsole								= Ext_FreeConsole
+	GetConsoleTitleA						= Ext_GetConsoleTitleA
+	GetConsoleTitleW						= Ext_GetConsoleTitleW
+	GetConsoleOriginalTitleA				= Ext_GetConsoleOriginalTitleA
+	GetConsoleOriginalTitleW				= Ext_GetConsoleOriginalTitleW
+
+	;; ORIGINAL DLL
+	;GetEnvironmentVariable				= GetEnvironmentVariableW

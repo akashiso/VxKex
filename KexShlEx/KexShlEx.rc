@@ -1,0 +1,114 @@
+#include "buildcfg.h"
+#include <Windows.h>
+#include <PrSht.h>
+#include <KexVer.h>
+#include "resource.h"
+
+1 VERSIONINFO
+	FILEVERSION KEX_VERSION_FV
+	FILEOS VOS_NT
+	FILETYPE VFT_DLL
+BEGIN
+	BLOCK "StringFileInfo" {
+		BLOCK "040904E4" {
+			VALUE "Comments",					KEX_WEB_STR
+			VALUE "FileDescription",			"VxKex Configuration Shell Extension"
+			VALUE "FileVersion",				KEX_VERSION_STR
+			VALUE "InternalName",				"KexShlEx"
+			VALUE "OriginalFilename",			"KEXSHLEX.DLL"
+		}
+		BLOCK "080404E4" {
+			VALUE "LegalCopyright",				KEX_WEB_STR
+			VALUE "FileDescription",			"VxKex 配置壳层扩展"
+			VALUE "FileVersion",				KEX_VERSION_STR
+			VALUE "InternalName",				"KexShlEx"
+			VALUE "OriginalFilename",			"KEXSHLEX.DLL"
+		}
+		BLOCK "040404E4" {
+			VALUE "LegalCopyright",				KEX_WEB_STR
+			VALUE "FileDescription",			"VxKex ?配置殼層擴展"
+			VALUE "FileVersion",				KEX_VERSION_STR
+			VALUE "InternalName",				"KexShlEx"
+			VALUE "OriginalFilename",			"KEXSHLEX.DLL"
+		}
+	}
+
+	BLOCK "VarFileInfo" {
+		VALUE "Translation", 0x0409 0x04E4, 0x0804 0x04E4
+	}
+END
+
+
+LANGUAGE LANG_CHINESE, SUBLANG_CHINESE_SIMPLIFIED
+
+IDD_VXKEXPROPSHEETPAGE DIALOGEX 0, 0, PROP_MED_CXDLG, PROP_MED_CYDLG
+	STYLE DS_SHELLFONT | WS_CAPTION
+	FONT 9, "NSimSun"
+BEGIN
+	LTEXT	"如果应用程序需要较新版本的 Windows，您可以使用 VxKex 兼容层来运行它。",
+			IDSTATIC, 7, 7, PROP_MED_CXDLG - 14, 31
+	
+	GROUPBOX		"兼容模式",											IDSTATIC,				7,		30,		210,	60
+	AUTOCHECKBOX	"为此程序启用 VxKex(&E)",							IDUSEVXKEX,				18,		43,		149,	10
+	AUTOCHECKBOX	"报告其他版本的 Windows：(&R)",						IDSPOOFVERSIONCHECK,	18,		57,		149,	10
+	COMBOBOX															IDWINVERCOMBOBOX,		18,		71,		149,	85,
+					CBS_DROPDOWNLIST | WS_DISABLED | WS_VSCROLL
+	
+	GROUPBOX		"高级选项",											IDSTATIC,				7,		95,		210,	59
+	AUTOCHECKBOX	"使用更强的版本报告功能(&V)",						IDSTRONGSPOOF,			18,		108,	152,	10, WS_DISABLED
+	AUTOCHECKBOX	"为子进程禁用 VxKex(&C)",							IDDISABLEFORCHILD,		18,		122,	152,	10
+	AUTOCHECKBOX	"禁用所有特定于应用程序的变通方法(&W)",	IDDISABLEAPPSPECIFIC,	18,		136,	152,	10
+	
+	CONTROL	"如果应用程序仍然无法使用兼容层正常运行，请考虑<A>报告错误</A>。",
+			IDREPORTBUG, "Link Window", WS_TABSTOP, 7, PROP_MED_CYDLG - 31, PROP_MED_CXDLG - 14, 31
+END
+
+
+LANGUAGE LANG_CHINESE, SUBLANG_CHINESE_TRADITIONAL
+
+IDD_VXKEXPROPSHEETPAGE DIALOGEX 0, 0, PROP_MED_CXDLG, PROP_MED_CYDLG
+	STYLE DS_SHELLFONT | WS_CAPTION
+	FONT 9, "PMingLiU"
+BEGIN
+	LTEXT	"如果應用程式需要較新版本的 Windows，您可以使用 VxKex 相容層來執行它。",
+			IDSTATIC, 7, 7, PROP_MED_CXDLG - 14, 31
+	
+	GROUPBOX		"相容模式",											IDSTATIC,				7,		30,		210,	60
+	AUTOCHECKBOX	"為此程式啟用 VxKex(&E)",							IDUSEVXKEX,				18,		43,		149,	10
+	AUTOCHECKBOX	"報告其他版本的 Windows：(&R)",						IDSPOOFVERSIONCHECK,	18,		57,		149,	10
+	COMBOBOX															IDWINVERCOMBOBOX,		18,		71,		149,	85,
+					CBS_DROPDOWNLIST | WS_DISABLED | WS_VSCROLL
+	
+	GROUPBOX		"高級選項",											IDSTATIC,				7,		95,		210,	59
+	AUTOCHECKBOX	"使用更強的版本報告功能(&V)",						IDSTRONGSPOOF,			18,		108,	152,	10, WS_DISABLED
+	AUTOCHECKBOX	"為子處理程序停用 VxKex(&C)",							IDDISABLEFORCHILD,		18,		122,	152,	10
+	AUTOCHECKBOX	"停用所有特定於應用程式的變通方法(&W)",	IDDISABLEAPPSPECIFIC,	18,		136,	152,	10
+	
+	CONTROL	"如果應用程式仍然無法使用相容層正常執行，請考慮<A>報告錯誤</A>。",
+			IDREPORTBUG, "Link Window", WS_TABSTOP, 7, PROP_MED_CYDLG - 31, PROP_MED_CXDLG - 14, 31
+END
+
+
+LANGUAGE LANG_ENGLISH, SUBLANG_NEUTRAL
+
+IDD_VXKEXPROPSHEETPAGE DIALOGEX 0, 0, PROP_MED_CXDLG, PROP_MED_CYDLG
+	STYLE DS_SHELLFONT | WS_CAPTION
+	FONT 8, "Microsoft Sans Serif"
+BEGIN
+	LTEXT	"If an application requires a newer version of Windows, you may be able to run it using the VxKex compatibility layer.",
+			IDSTATIC, 7, 7, PROP_MED_CXDLG - 14, 31
+	
+	GROUPBOX		"Compatibility mode",								IDSTATIC,				7,		30,		210,	60
+	AUTOCHECKBOX	"&Enable VxKex for this program",					IDUSEVXKEX,				18,		43,		149,	10
+	AUTOCHECKBOX	"&Report a different version of Windows:",			IDSPOOFVERSIONCHECK,	18,		57,		149,	10
+	COMBOBOX															IDWINVERCOMBOBOX,		18,		71,		149,	85,
+					CBS_DROPDOWNLIST | WS_DISABLED | WS_VSCROLL
+	
+	GROUPBOX		"Advanced options",									IDSTATIC,				7,		95,		210,	59
+	AUTOCHECKBOX	"Use stronger &version reporting",					IDSTRONGSPOOF,			18,		108,	152,	10, WS_DISABLED
+	AUTOCHECKBOX	"Disable VxKex for &child processes",				IDDISABLEFORCHILD,		18,		122,	152,	10
+	AUTOCHECKBOX	"Disable all application-specific &workarounds",	IDDISABLEAPPSPECIFIC,	18,		136,	152,	10
+
+	CONTROL	"If an application still does not function properly using the compatibility layer, consider <A>reporting a bug</A>.",
+			IDREPORTBUG, "Link Window", WS_TABSTOP, 7, PROP_MED_CYDLG - 31, PROP_MED_CXDLG - 14, 31
+END

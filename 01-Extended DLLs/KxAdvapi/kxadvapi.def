@@ -1,0 +1,20 @@
+LIBRARY KxAdvapi
+EXPORTS
+	RegGetValueA				= KxBase.RegGetValueA
+	RegGetValueW				= KxBase.RegGetValueW
+	
+	;; Forwarders to KexDll
+	EventSetInformation			= KexDll.KexEtwEventSetInformation
+
+	;; Forwarders to KxBase
+	CreateWellKnownSid			= KxBase.CreateWellKnownSid
+	RegOpenKeyExA				= KxBase.RegOpenKeyExA
+	RegOpenKeyExW				= KxBase.RegOpenKeyExW
+	RegEnumKeyExA				= KxBase.RegEnumKeyExA
+	RegEnumKeyExW				= KxBase.RegEnumKeyExW
+	GetDynamicTimeZoneInformationEffectiveYears = KxBase.GetDynamicTimeZoneInformationEffectiveYears
+	EnumDynamicTimeZoneInformation = KxBase.EnumDynamicTimeZoneInformation
+
+
+	;; ORIGINAL DLL
+	RegOpenKeyEx				= RegOpenKeyExW

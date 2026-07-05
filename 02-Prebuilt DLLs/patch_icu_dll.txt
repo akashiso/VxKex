@@ -1,0 +1,72 @@
+Patches For icu.dll
+
+Base : 0x180000000, amd64, .text (START = 0x180001000), getIcuDataDirectoryUnderWindowsDirectory (0x180003540)
+
+...
+ 18000356E | 48 8D 4D 60          |   lea     rcx, [rbp+280h+Buffer]; lpBuffer
+ 180003572 | E9 CA 00 00 00       |   jmp     loc_180003641; Patched Part Start
+ 180003577 | 90                   |   nop
+ 180003578 | 90                   |   nop ; Patched Part End
+ 180003579 | 0F 1F 44 00 00       |   nop     dword ptr [rax+rax+00h]
+ 18000357E |                      |
+ 18000357E |                      | loc_18000357E:
+ 18000357E | FF C8                |   dec     eax
+ 180003580 | 3D 01 01 00 00       |   cmp     eax, 101h
+ 180003585 | 0F 87 FD 00 00 00    |   ja      loc_180003688
+...
+
+...
+ 180003638 | 84 C0                |   test    al, al
+ 18000363A | 75 F4                |   jnz     short loc_180003630
+ 18000363C | 48 FF CB             |   dec     rbx
+ 18000363F | EB 1B                |   jmp     short loc_18000365C; Patched Part Start
+ 180003641 |                      |
+ 180003641 |                      | loc_180003641:
+ 180003641 | 49 89 D0             |   mov     r8, rdx; nSize
+ 180003644 | 48 89 CA             |   mov     rdx, rcx; lpBuffer
+ 180003647 | 48 8D 0D F2 C9 18 00 |   lea     rcx, Name; "KexDirPath__"
+ 18000364E | FF 15 FC 7A 18 00    |   call    cs:__imp_GetEnvironmentVariableW
+ 180003654 | E9 25 FF FF FF       |   jmp     loc_18000357E
+ 180003659 | 90                   |   nop
+ 18000365A | 90                   |   nop
+ 18000365B | 90                   |   nop
+ 18000365C |                      |
+ 18000365C |                      | loc_18000365C:
+ 18000365C | B8 01 00 00 00       |   mov     eax, 1; Patched Part End
+ 180003661 |                      |
+ 180003661 |                      | loc_180003661:
+ 180003661 | 48 8B 8D 70 02 00 00 |   mov     rcx, [rbp+280h+var_10]
+ 180003668 | 48 33 CC             |   xor     rcx, rsp; StackCookie
+...
+
+Base 0x10000000, x86, .text (START = 0x10001000), getIcuDataDirectoryUnderWindowsDirectory (0x1007CBCD)
+
+...
+ 1007CBF1 | 50                |   push    eax; lpBuffer
+ 1007CBF2 | 8B F9             |   mov     edi, ecx
+ 1007CBF4 | E9 B5 00 00 00    |   jmp     loc_1007CCAE; Patched
+ 1007CBF9 | 90                |   nop
+ 1007CBFA |                   |
+ 1007CBFA |                   | loc_1007CBFA:
+ 1007CBFA | 48                |   dec     eax
+ 1007CBFB | 3D 01 01 00 00    |   cmp     eax, 101h
+...
+
+...
+ 1007CC99 | 84 C0             |   test    al, al
+ 1007CC9B | 75 F6             |   jnz     short loc_1007CC93
+ 1007CC9D | 4F                |   dec     edi
+ 1007CC9E | 40                |   inc     eax; Patched Part Start
+ 1007CC9F | EB 17             |   jmp     short loc_1007CCB8
+ 1007CCA1 | 8D 05 04 B0 05 10 |   lea     eax, Name; "KexDirPath__"
+ 1007CCA7 | 50                |   push    eax; lpName
+ 1007CCA8 | FF 15 78 C0 1B 10 |   call    ds:__imp__GetEnvironmentVariableW@12; GetEnvironmentVariableW(x,x,x)
+ 1007CCAE |                   |
+ 1007CCAE |                   | loc_1007CCAE:
+ 1007CCAE | E9 47 FF FF FF    |   jmp     loc_1007CBFA
+ 1007CCB3 | 90                |   nop
+ 1007CCB4 | EB 02             |   jmp     short loc_1007CCB8; Patched Part End
+ 1007CCB6 |                   |
+ 1007CCB6 |                   | loc_1007CCB6:
+ 1007CCB6 | 33 C0             |   xor     eax, eax
+...

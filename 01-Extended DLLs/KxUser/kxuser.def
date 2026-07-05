@@ -1,0 +1,139 @@
+LIBRARY KxUser
+EXPORTS
+	;;
+	;; autorot.c
+	;;
+
+	SetDisplayAutoRotationPreferences
+	GetDisplayAutoRotationPreferences
+	GetAutoRotationState
+
+	;;
+	;; blutooth.c
+	;;
+
+	BluetoothGATTAbortReliableWrite
+	BluetoothGATTBeginReliableWrite
+	BluetoothGATTEndReliableWrite
+	BluetoothGATTGetCharacteristics
+	BluetoothGATTGetCharacteristicValue
+	BluetoothGATTGetDescriptors
+	BluetoothGATTGetDescriptorValue
+	BluetoothGATTGetIncludedServices
+	BluetoothGATTGetServices
+	BluetoothGATTRegisterEvent
+	BluetoothGATTSetCharacteristicValue
+	BluetoothGATTSetDescriptorValue
+	BluetoothGATTUnregisterEvent
+	
+	;;
+	;; chromiumpatch.c
+	;;
+
+	CommandLineToArgvW					= Ext_CommandLineToArgvW
+	
+	;;
+	;; featurestaging.c
+	;;
+
+	GetFeatureEnabledState
+	GetFeatureVariant
+	RecordFeatureError
+	RecordFeatureUsage
+	SubscribeFeatureStateChangeNotification
+	UnsubscribeFeatureStateChangeNotification
+
+	;;
+	;; misc.c
+	;;
+
+	CreateWindowInBand
+	GetWindowBand
+	GetProcessUIContextInformation @2521 NONAME
+	GetCurrentInputMessageSource
+	IsImmersiveProcess
+	SetWindowFeedbackSetting
+	GetMessageA = Ext_GetMessageA
+	GetMessageW = Ext_GetMessageW
+	PeekMessageA = Ext_PeekMessageA
+	PeekMessageW = Ext_PeekMessageW
+
+	;;
+	;; pointer.c
+	;;
+
+	GetPointerDevices
+	GetPointerType
+	GetPointerInfo
+	GetPointerInfoHistory
+	GetPointerTouchInfo
+	GetPointerTouchInfoHistory
+	GetPointerFrameTouchInfo
+	GetPointerFrameTouchInfoHistory
+	GetPointerPenInfo
+	GetPointerPenInfoHistory
+	SkipPointerFrameMessages
+	GetPointerDeviceRects
+	EnableMouseInPointer
+	IsMouseInPointerEnabled
+	RegisterPointerDeviceNotifications
+
+	;;
+	;; processref.c
+	;;
+
+	GetProcessReference
+	SetProcessReference
+
+	;;
+	;; pwrnotfy.c
+	;;
+
+	RegisterSuspendResumeNotification
+	UnregisterSuspendResumeNotification
+
+	;;
+	;; scaling.c
+	;;
+	
+	GetDpiForSystem
+	GetDpiForWindow
+	GetDpiForMonitor
+	GetScaleFactorForDevice
+	GetScaleFactorForMonitor
+	GetProcessDpiAwareness
+	SetProcessDpiAwareness
+	GetThreadDpiAwarenessContext
+	SetThreadDpiAwarenessContext
+	GetWindowDpiHostingBehavior
+	GetThreadDpiHostingBehavior
+	SetThreadDpiHostingBehavior
+	SetProcessDpiAwarenessContext
+	AdjustWindowRectExForDpi
+	GetDpiForShellUIComponent
+	GetAwarenessFromDpiAwarenessContext
+	GetWindowDpiAwarenessContext
+	EnableNonClientDpiScaling
+	AreDpiAwarenessContextsEqual
+	IsValidDpiAwarenessContext
+	LogicalToPhysicalPointForPerMonitorDPI
+	PhysicalToLogicalPointForPerMonitorDPI
+
+	;;
+	;; sysmetrc.c
+	;;
+
+	GetSystemMetricsForDpi
+	SystemParametersInfoForDpi
+
+	;;
+	;; timer.c
+	;;
+
+	SetCoalescableTimer
+	
+	;;
+	;; window.c
+	;;
+
+	IsWindowArranged

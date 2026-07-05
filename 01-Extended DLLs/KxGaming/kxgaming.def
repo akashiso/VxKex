@@ -1,0 +1,16 @@
+LIBRARY KxGaming
+EXPORTS
+	;; gameui.c
+	ProcessPendingGameUI
+	ShowChangeFriendRelationshipUI
+	ShowGameInviteUI
+	ShowPlayerPickerUI
+	ShowProfileCardUI
+	ShowTitleAchievementsUI
+	TryCancelPendingGameUI
+
+	;;factory.c
+	DllGetClassObject PRIVATE 
+
+	;;gameinput
+	GameInputCreate
