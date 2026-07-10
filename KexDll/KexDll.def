@@ -89,13 +89,13 @@ EXPORTS
 	AshModuleBaseNameIs
 	AshModuleIsWindowsModule
 
-	KexVtblRewriteInplace
-	KexVtblReleaseRewriteData
-	KexVtblFindOriginalVFTable
-	KexVtblFindRewrittenVFTable
-	KexVtblReplace
-	KexVtblGetReplaceBundles
-	KexVtblReleaseReplaceData
+	KexVtblPatchInplace
+	KexVtblUnpatchInplace
+	KexVtblLookupOriginalTable
+	KexVtblLookupPatchedTable
+	KexVtblWrap
+	KexVtblGetWrapperContext
+	KexVtblUnwrap
 
 	VxlOpenLog
 	VxlCloseLog

@@ -7,7 +7,7 @@ UINT STDMETHODCALLTYPE IUnknownObj_Release(
 	IUnknown* This
 )
 {
-	PPVOID lpVtbl = KexVtblFindOriginalVFTable(This->lpVtbl);
+	PPVOID lpVtbl = KexVtblLookupOriginalTable(This->lpVtbl);
 	PVOID pVtbl = This->lpVtbl;
 
 	// Call to IUnknown?_Release
@@ -15,7 +15,7 @@ UINT STDMETHODCALLTYPE IUnknownObj_Release(
 		IUnknown* This
 		))(lpVtbl[2]))(This);
 	if (RefCount == 0)
-		KexVtblReleaseRewriteData(pVtbl);
+		KexVtblUnpatchInplace(pVtbl);
 
 	return RefCount;
 }
@@ -27,7 +27,7 @@ HRESULT STDMETHODCALLTYPE IDWriteTextLayout4_GetFontCollection(
 	void* range)
 {
 	HRESULT hr;
-	PPVOID lpVtbl = KexVtblFindOriginalVFTable(This->lpVtbl);
+	PPVOID lpVtbl = KexVtblLookupOriginalTable(This->lpVtbl);
 
 	// Call to IDWriteTextLayout4_GetFontCollection
 	hr = ((HRESULT(STDMETHODCALLTYPE*)(
@@ -69,7 +69,7 @@ HRESULT STDMETHODCALLTYPE IDWriteFactory7_CreateTextLayout(
 	IUnknown** layout)
 {
 	HRESULT hr;
-	PPVOID lpVtbl = KexVtblFindOriginalVFTable(This->lpVtbl);
+	PPVOID lpVtbl = KexVtblLookupOriginalTable(This->lpVtbl);
 
 	// Call to IDWriteFactory7_CreateTextLayout
 	hr = ((HRESULT(STDMETHODCALLTYPE*)(
@@ -83,11 +83,11 @@ HRESULT STDMETHODCALLTYPE IDWriteFactory7_CreateTextLayout(
 
 	if (SUCCEEDED(hr))
 	{
-		KEX_VFT_VTBL_MODIFICATION mod[] = {
+		KEX_VTBL_MODIFICATION mod[] = {
 			{2 * sizeof(PVOID), IUnknownObj_Release},
 			{44 * sizeof(PVOID), IDWriteTextLayout4_GetFontCollection}
 		};
-		KexVtblRewriteInplace((*layout)->lpVtbl, mod, 2, FALSE, NULL);
+		KexVtblPatchInplace((*layout)->lpVtbl, mod, 2, FALSE, NULL);
 	}
 
 	return hr;
@@ -115,11 +115,11 @@ KXDWAPI HRESULT WINAPI Ext_DWriteCreateFactory(
 		IUnknown* obj;
 		HRESULT Result = DWriteCoreCreateFactory(factoryType, iid, &obj);
 
-		KEX_VFT_VTBL_MODIFICATION mod[] = {
+		KEX_VTBL_MODIFICATION mod[] = {
 			{2 * sizeof(PVOID), IUnknownObj_Release},
 			{18 * sizeof(PVOID), IDWriteFactory7_CreateTextLayout}
 		};
-		KexVtblRewriteInplace(obj->lpVtbl, mod, 2, FALSE, NULL);
+		KexVtblPatchInplace(obj->lpVtbl, mod, 2, FALSE, NULL);
 		*factory = obj;
 		return Result;
 	}

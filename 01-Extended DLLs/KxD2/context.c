@@ -43,7 +43,7 @@ ULONG STDMETHODCALLTYPE IID2D1DeviceContext0To6_Release(
 	if (RefCount == 0)
 	{
 		IUnknown_Release((IUnknown*)rdr);
-		KexVtblReleaseReplaceData(&lpVtbl);
+		KexVtblUnwrap(&lpVtbl);
 	}
 	return RefCount;
 }
@@ -862,11 +862,11 @@ HRESULT WrapDeviceContext(
 	HRESULT dispatchResult)
 {
 	IID2D1DeviceContext0To6* rct2;
-	KEX_VFT_REPLACING_ENTRY rpl[] = {
-		{offsetof(IUnknownVtbl, Release), IID2D1DeviceContext0To6_Release, KEX_VFT_REPLACING_ALL}
+	KEX_VTBL_REPLACING_ENTRY rpl[] = {
+		{offsetof(IUnknownVtbl, Release), IID2D1DeviceContext0To6_Release, KEX_VTBL_REPLACING_ALL}
 	};
-	if (!KexVtblReplace(dc, rpl, IID2D1DeviceContext0To6Vtbl, 1, ARRAYSIZE(IID2D1DeviceContext0To6Vtbl),
-						sizeof(IID2D1DeviceContext0To6) - sizeof(KEX_VFT_WRAPPER), (PPKEX_VFT_WRAPPER)&rct2))
+	if (!KexVtblWrap(dc, rpl, IID2D1DeviceContext0To6Vtbl, 1, ARRAYSIZE(IID2D1DeviceContext0To6Vtbl),
+						sizeof(IID2D1DeviceContext0To6) - sizeof(KEX_VTBL_WRAPPER), (PPKEX_VTBL_WRAPPER)&rct2))
 		return E_OUTOFMEMORY;
 
 	rct2->textRenderer = CreateTextRenderer(((IID2D1Factory1To8*)fact)->Thi);
@@ -920,7 +920,7 @@ ULONG STDMETHODCALLTYPE IID2D1AnyRenderTarget_Release(
 	RefCount = This->lpVtbl->Release(This->Thi);
 
 	if (RefCount == 0)
-		KexVtblReleaseReplaceData(&lpVtbl);
+		KexVtblUnwrap(&lpVtbl);
 	return RefCount;
 }
 
@@ -935,16 +935,16 @@ HRESULT WrapAnyRenderTarget(
 	if (dc == NULL)
 		return E_OUTOFMEMORY;
 
-	KEX_VFT_REPLACING_ENTRY rpl[] = {
-		{offsetof(IUnknownVtbl, QueryInterface), IID2D1AnyRenderTarget_QueryInterface, KEX_VFT_REPLACING_EXTERNAL_ONLY},
-		{offsetof(IUnknownVtbl, Release), IID2D1AnyRenderTarget_Release, KEX_VFT_REPLACING_ALL},
-		{offsetof(ID2D1RenderTargetVtbl, CreateCompatibleRenderTarget), IID2D1DeviceContext0To6_CreateCompatibleRenderTarget, KEX_VFT_REPLACING_EXTERNAL_ONLY},
-		{offsetof(ID2D1RenderTargetVtbl, DrawText), IID2D1DeviceContext0To6_DrawText, KEX_VFT_REPLACING_EXTERNAL_ONLY},
-		{offsetof(ID2D1RenderTargetVtbl, DrawTextLayout), IID2D1DeviceContext0To6_DrawTextLayout, KEX_VFT_REPLACING_EXTERNAL_ONLY},
-		{offsetof(ID2D1RenderTargetVtbl, DrawGlyphRun), IID2D1DeviceContext0To6_DrawGlyphRun, KEX_VFT_REPLACING_EXTERNAL_ONLY}
+	KEX_VTBL_REPLACING_ENTRY rpl[] = {
+		{offsetof(IUnknownVtbl, QueryInterface), IID2D1AnyRenderTarget_QueryInterface, KEX_VTBL_REPLACING_EXTERNAL_ONLY},
+		{offsetof(IUnknownVtbl, Release), IID2D1AnyRenderTarget_Release, KEX_VTBL_REPLACING_ALL},
+		{offsetof(ID2D1RenderTargetVtbl, CreateCompatibleRenderTarget), IID2D1DeviceContext0To6_CreateCompatibleRenderTarget, KEX_VTBL_REPLACING_EXTERNAL_ONLY},
+		{offsetof(ID2D1RenderTargetVtbl, DrawText), IID2D1DeviceContext0To6_DrawText, KEX_VTBL_REPLACING_EXTERNAL_ONLY},
+		{offsetof(ID2D1RenderTargetVtbl, DrawTextLayout), IID2D1DeviceContext0To6_DrawTextLayout, KEX_VTBL_REPLACING_EXTERNAL_ONLY},
+		{offsetof(ID2D1RenderTargetVtbl, DrawGlyphRun), IID2D1DeviceContext0To6_DrawGlyphRun, KEX_VTBL_REPLACING_EXTERNAL_ONLY}
 	};
-	if (!KexVtblReplace(rTarget, rpl, NULL, ARRAYSIZE(rpl), sizeof(ID2D1DCRenderTargetVtbl) / sizeof(PVOID) + 6/*Reserved space*/,
-						sizeof(IID2D1AnyRenderTarget1) - sizeof(KEX_VFT_WRAPPER), (PPKEX_VFT_WRAPPER)&rct2))
+	if (!KexVtblWrap(rTarget, rpl, NULL, ARRAYSIZE(rpl), sizeof(ID2D1DCRenderTargetVtbl) / sizeof(PVOID) + 6/*Reserved space*/,
+						sizeof(IID2D1AnyRenderTarget1) - sizeof(KEX_VTBL_WRAPPER), (PPKEX_VTBL_WRAPPER)&rct2))
 		return E_OUTOFMEMORY;
 
 	rct2->ctx = (IUnknown*)dc;

@@ -36,7 +36,7 @@ ULONG STDMETHODCALLTYPE IIDXGIFactory2_Release(
 	RefCount = This->lpVtbl->Release(This->Thi);
 
 	if (RefCount == 0)
-		KexVtblReleaseReplaceData(&lpVtbl);
+		KexVtblUnwrap(&lpVtbl);
 	return RefCount;
 }
 
@@ -266,11 +266,11 @@ IIDXGIFactory2To7* CreateIIDXGIFactory2To7(IDXGIFactory2* pFactory2, UINT Creati
 	}
 
 	IIDXGIFactory2To7* factory;
-	KEX_VFT_REPLACING_ENTRY rpl[] = {
-		{offsetof(IUnknownVtbl, Release), IIDXGIFactory2_Release, KEX_VFT_REPLACING_ALL}
+	KEX_VTBL_REPLACING_ENTRY rpl[] = {
+		{offsetof(IUnknownVtbl, Release), IIDXGIFactory2_Release, KEX_VTBL_REPLACING_ALL}
 	};
-	if (!KexVtblReplace(pFactory2, rpl, IIDXGIFactory2To7Vtbl, 1, ARRAYSIZE(IIDXGIFactory2To7Vtbl),
-						sizeof(IIDXGIFactory2To7) - sizeof(KEX_VFT_WRAPPER), (PPKEX_VFT_WRAPPER)&factory))
+	if (!KexVtblWrap(pFactory2, rpl, IIDXGIFactory2To7Vtbl, 1, ARRAYSIZE(IIDXGIFactory2To7Vtbl),
+						sizeof(IIDXGIFactory2To7) - sizeof(KEX_VTBL_WRAPPER), (PPKEX_VTBL_WRAPPER)&factory))
 		return NULL;
 
 	factory->CreationFlags = CreationFlags;
@@ -312,7 +312,7 @@ ULONG STDMETHODCALLTYPE IIDXGIAdapter_Release(
 	RefCount = This->lpVtbl->Release(This->Thi);
 
 	if (RefCount == 0)
-		KexVtblReleaseReplaceData(&lpVtbl);
+		KexVtblUnwrap(&lpVtbl);
 	return RefCount;
 }
 
@@ -447,11 +447,11 @@ IDXGIAdapter1* WrapIDXGIAdapter(IDXGIAdapter1* pAdapt)
 	}
 
 	IIDXGIAdapter* adapt;
-	KEX_VFT_REPLACING_ENTRY rpl[] = {
-		{offsetof(IUnknownVtbl, Release), IIDXGIAdapter_Release, KEX_VFT_REPLACING_ALL}
+	KEX_VTBL_REPLACING_ENTRY rpl[] = {
+		{offsetof(IUnknownVtbl, Release), IIDXGIAdapter_Release, KEX_VTBL_REPLACING_ALL}
 	};
-	if (!KexVtblReplace(pAdapt, rpl, IIDXGIAdapter4Vtbl, 1, ARRAYSIZE(IIDXGIAdapter4Vtbl),
-						0, (PPKEX_VFT_WRAPPER)&adapt))
+	if (!KexVtblWrap(pAdapt, rpl, IIDXGIAdapter4Vtbl, 1, ARRAYSIZE(IIDXGIAdapter4Vtbl),
+						0, (PPKEX_VTBL_WRAPPER)&adapt))
 		return NULL;
 
 	return pAdapt;
@@ -502,7 +502,7 @@ ULONG STDMETHODCALLTYPE IIDXGISwapchain_Release(
 		IUnknownVtbl* lpVtbl = (IUnknownVtbl*)This->lpVtbl;
 		IUnknown* Thi = (IUnknown*)This->Thi;
 
-		KexVtblReleaseReplaceData(&This->Thi->lpVtbl);
+		KexVtblUnwrap(&This->Thi->lpVtbl);
 		RefCount = lpVtbl->Release(Thi);
 
 		return RefCount;
@@ -673,11 +673,11 @@ IDXGISwapChain* WrapIDXGISwapchain(IDXGISwapChain* pAdapt)
 	}
 
 	IIDXGISwapchain* adapt;
-	KEX_VFT_REPLACING_ENTRY rpl[] = {
-		{offsetof(IUnknownVtbl, Release), IIDXGISwapchain_Release, KEX_VFT_REPLACING_ALL}
+	KEX_VTBL_REPLACING_ENTRY rpl[] = {
+		{offsetof(IUnknownVtbl, Release), IIDXGISwapchain_Release, KEX_VTBL_REPLACING_ALL}
 	};
-	if (!KexVtblReplace(pAdapt, rpl, IIDXGISwapchain4Vtbl, 1, ARRAYSIZE(IIDXGISwapchain4Vtbl),
-						0, (PPKEX_VFT_WRAPPER)&adapt))
+	if (!KexVtblWrap(pAdapt, rpl, IIDXGISwapchain4Vtbl, 1, ARRAYSIZE(IIDXGISwapchain4Vtbl),
+						0, (PPKEX_VTBL_WRAPPER)&adapt))
 		return NULL;
 	//pAdapt->lpVtbl->AddRef(pAdapt);
 
@@ -719,7 +719,7 @@ ULONG STDMETHODCALLTYPE IIDXGIOutput_Release(
 	RefCount = This->lpVtbl->Release(This->Thi);
 
 	if (RefCount == 0)
-		KexVtblReleaseReplaceData(&lpVtbl);
+		KexVtblUnwrap(&lpVtbl);
 	return RefCount;
 }
 
@@ -847,11 +847,11 @@ IDXGIOutput* WrapIDXGIOutput(IDXGIOutput* pAdapt)
 	}
 
 	IIDXGIOutput* adapt;
-	KEX_VFT_REPLACING_ENTRY rpl[] = {
-		{offsetof(IUnknownVtbl, Release), IIDXGIOutput_Release, KEX_VFT_REPLACING_ALL}
+	KEX_VTBL_REPLACING_ENTRY rpl[] = {
+		{offsetof(IUnknownVtbl, Release), IIDXGIOutput_Release, KEX_VTBL_REPLACING_ALL}
 	};
-	if (!KexVtblReplace(pAdapt, rpl, IIDXGIOutput6Vtbl, 1, ARRAYSIZE(IIDXGIOutput6Vtbl),
-						0, (PPKEX_VFT_WRAPPER)&adapt))
+	if (!KexVtblWrap(pAdapt, rpl, IIDXGIOutput6Vtbl, 1, ARRAYSIZE(IIDXGIOutput6Vtbl),
+						0, (PPKEX_VTBL_WRAPPER)&adapt))
 		return NULL;
 
 	return pAdapt;
@@ -899,7 +899,7 @@ ULONG STDMETHODCALLTYPE IIDXGIDevice_Release(
 	RefCount = This->lpVtbl->Release(This->Thi);
 
 	if (RefCount == 0)
-		KexVtblReleaseReplaceData(&lpVtbl);
+		KexVtblUnwrap(&lpVtbl);
 	return RefCount;
 }
 
@@ -966,11 +966,11 @@ IDXGIDevice* WrapIDXGIDevice(IDXGIDevice* pAdapt)
 	}
 
 	IIDXGIDevice* adapt;
-	KEX_VFT_REPLACING_ENTRY rpl[] = {
-		{offsetof(IUnknownVtbl, Release), IIDXGIDevice_Release, KEX_VFT_REPLACING_ALL}
+	KEX_VTBL_REPLACING_ENTRY rpl[] = {
+		{offsetof(IUnknownVtbl, Release), IIDXGIDevice_Release, KEX_VTBL_REPLACING_ALL}
 	};
-	if (!KexVtblReplace(pAdapt, rpl, IIDXGIDevice4Vtbl, 1, ARRAYSIZE(IIDXGIDevice4Vtbl),
-						0, (PPKEX_VFT_WRAPPER)&adapt))
+	if (!KexVtblWrap(pAdapt, rpl, IIDXGIDevice4Vtbl, 1, ARRAYSIZE(IIDXGIDevice4Vtbl),
+						0, (PPKEX_VTBL_WRAPPER)&adapt))
 		return NULL;
 
 	return pAdapt;

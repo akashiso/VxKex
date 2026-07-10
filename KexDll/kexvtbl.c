@@ -4,8 +4,8 @@
 #define WRAPCALLTABLE_SIZE 192
 
 // from wrapcall.asm
-EXTERN CONST PVOID VWrapCallFuncTable[WRAPCALLTABLE_SIZE];
-EXTERN CONST PVOID ExternalOnlyVWrapCallFuncTable[WRAPCALLTABLE_SIZE];
+EXTERN CONST PVOID WrapCallFuncTable[WRAPCALLTABLE_SIZE];
+EXTERN CONST PVOID ExternalOnlyWrapCallFuncTable[WRAPCALLTABLE_SIZE];
 
 //
 // Rewrite the given virtual function table inplace. Generally in the .data/.rdata segement.
@@ -13,26 +13,26 @@ EXTERN CONST PVOID ExternalOnlyVWrapCallFuncTable[WRAPCALLTABLE_SIZE];
 // 
 // If you are trying to rewrite an rewritten table, nothing will happen except the 
 // reference count of this table will increase. This is considered to be that a new interface 
-// is refering this modified table. So you have to release the reference to the table 
+// is referring this modified table. So you have to release the reference to the table 
 // when IUnknown_Release is called and the interface's reference count is turned to zero.
 //
 
-STATIC PRTL_DYNAMIC_HASH_TABLE RewriteDataTable = NULL;
+STATIC PRTL_DYNAMIC_HASH_TABLE pRewriteRecordTable = NULL;
 STATIC RTL_SRWLOCK pSRWLock = { 0 }; // That's what RtlInitializeSRWLock exactly did
 
-KEXAPI NTSTATUS NTAPI KexVtblRewriteInplace(
+KEXAPI NTSTATUS NTAPI KexVtblPatchInplace(
 	IN	PVOID	lpVtbl,
-	IN  PKEX_VFT_VTBL_MODIFICATION Entry,
-	IN  UINT    NumberOfEntry,
-	IN  BOOL    CanOverlap,
-	OUT PPVOID* OriginalVFTable)
+	IN  PKEX_VTBL_MODIFICATION Entries,
+	IN  UINT    NumberOfEntries,
+	IN  BOOL    AllowOverlap,
+	OUT PPVOID* pOriginalVtbl)
 {
 	if (lpVtbl == NULL)
 		return STATUS_INVALID_PARAMETER_1;
 
 	RtlAcquireSRWLockExclusive(&pSRWLock);
-	if (RewriteDataTable == NULL)
-		RtlCreateHashTable(&RewriteDataTable, 0, 0);
+	if (pRewriteRecordTable == NULL)
+		RtlCreateHashTable(&pRewriteRecordTable, 0, 0);
 
 	NTSTATUS status = STATUS_SUCCESS;
 	SIZE_T maxOffset = 0;
@@ -41,60 +41,60 @@ KEXAPI NTSTATUS NTAPI KexVtblRewriteInplace(
 	// Calculate the furthest function we have to cover.
 	//
 
-	for (UINT i = 0; i < NumberOfEntry; i++)
+	for (UINT i = 0; i < NumberOfEntries; i++)
 	{
-		if (Entry[i].ByteOffset > maxOffset)
-			maxOffset = Entry[i].ByteOffset;
+		if (Entries[i].ByteOffset > maxOffset)
+			maxOffset = Entries[i].ByteOffset;
 	}
 	maxOffset /= sizeof(PVOID);
 	maxOffset++;
 
 	//
 	// To check if the table is already rewritten.
-	// If CannotOverlap is specified, then also check the overlaps.
+	// If AllowOverlap is not specified, then also check the overlaps.
 	//
 
-	PPVOID pVtbl = (PPVOID)lpVtbl;
+	PPVOID ppVtbl = (PPVOID)lpVtbl;
 	RTL_DYNAMIC_HASH_TABLE_ENUMERATOR enumerator;
 	PRTL_DYNAMIC_HASH_TABLE_ENTRY pEntry;
 
-	if (!CanOverlap)
+	if (!AllowOverlap)
 	{
-		RtlInitWeakEnumerationHashTable(RewriteDataTable, &enumerator);
-		pEntry = RtlWeaklyEnumerateEntryHashTable(RewriteDataTable, &enumerator);
+		RtlInitWeakEnumerationHashTable(pRewriteRecordTable, &enumerator);
+		pEntry = RtlWeaklyEnumerateEntryHashTable(pRewriteRecordTable, &enumerator);
 		while (pEntry)
 		{
-			KEX_VFT_REWRITE_DATA* cur = CONTAINING_RECORD(pEntry, KEX_VFT_REWRITE_DATA, HashTableEntry);
+			KEX_VTBL_REWRITE_DATA* currentRecord = CONTAINING_RECORD(pEntry, KEX_VTBL_REWRITE_DATA, HashTableEntry);
 
 			PPVOID overlappedStart = NULL;
 			PPVOID overlappedEnd = NULL;
 
-			overlappedStart = max(cur->RewrittenVFTable, pVtbl);
-			overlappedEnd = min(cur->RewrittenVFTable + cur->NumberOfFuncs, pVtbl + maxOffset);
+			overlappedStart = max(currentRecord->RewrittenVtbl, ppVtbl);
+			overlappedEnd = min(currentRecord->RewrittenVtbl + currentRecord->NumberOfFuncs, ppVtbl + maxOffset);
 
-			if (cur->RewrittenVFTable == pVtbl || overlappedStart < overlappedEnd)
+			if (currentRecord->RewrittenVtbl == ppVtbl || overlappedStart < overlappedEnd)
 			{
 				//
-				// Increase the reference count of the colided rewritten table
-				// because an interface is actually refering this table.
+				// Increase the reference count of the collided rewritten table
+				// because there is at least one interface referring this table.
 				//
 
-				cur->RefCount++;
-				RtlEndWeakEnumerationHashTable(RewriteDataTable, &enumerator);
+				currentRecord->RefCount++;
+				RtlEndWeakEnumerationHashTable(pRewriteRecordTable, &enumerator);
 				status = STATUS_ADDRESS_ALREADY_EXISTS;
 				goto Exit;
 			}
-			pEntry = RtlWeaklyEnumerateEntryHashTable(RewriteDataTable, &enumerator);
+			pEntry = RtlWeaklyEnumerateEntryHashTable(pRewriteRecordTable, &enumerator);
 		}
-		RtlEndWeakEnumerationHashTable(RewriteDataTable, &enumerator);
+		RtlEndWeakEnumerationHashTable(pRewriteRecordTable, &enumerator);
 	}
 	else
 	{
-		pEntry = RtlLookupEntryHashTable(RewriteDataTable, (ULONG_PTR)pVtbl, NULL);
+		pEntry = RtlLookupEntryHashTable(pRewriteRecordTable, (ULONG_PTR)ppVtbl, NULL);
 		if (pEntry)
 		{
-			KEX_VFT_REWRITE_DATA* cur = CONTAINING_RECORD(pEntry, KEX_VFT_REWRITE_DATA, HashTableEntry);
-			cur->RefCount++;
+			KEX_VTBL_REWRITE_DATA* currentRecord = CONTAINING_RECORD(pEntry, KEX_VTBL_REWRITE_DATA, HashTableEntry);
+			currentRecord->RefCount++;
 			status = STATUS_ADDRESS_ALREADY_EXISTS;
 			goto Exit;
 		}
@@ -104,20 +104,20 @@ KEXAPI NTSTATUS NTAPI KexVtblRewriteInplace(
 	// Create a new record and store the information and the original functions we covered.
 	//
 
-	KEX_VFT_REWRITE_DATA* newObj;
-	newObj = HeapAlloc(GetProcessHeap(), 0, sizeof(KEX_VFT_REWRITE_DATA) + sizeof(PVOID) * maxOffset);
-	newObj->RewrittenVFTable = lpVtbl;
-	newObj->OriginalVFTable = (PPVOID)(((LPBYTE)newObj) + sizeof(KEX_VFT_REWRITE_DATA));
-	newObj->RefCount = 1;
-	newObj->NumberOfFuncs = maxOffset;
-	CopyMemory(newObj->OriginalVFTable, lpVtbl, maxOffset * sizeof(PVOID));
+	KEX_VTBL_REWRITE_DATA* newRecord;
+	newRecord = HeapAlloc(GetProcessHeap(), 0, sizeof(KEX_VTBL_REWRITE_DATA) + sizeof(PVOID) * maxOffset);
+	newRecord->RewrittenVtbl = lpVtbl;
+	newRecord->OriginalVtbl = (PPVOID)(((LPBYTE)newRecord) + sizeof(KEX_VTBL_REWRITE_DATA));
+	newRecord->RefCount = 1;
+	newRecord->NumberOfFuncs = maxOffset;
+	CopyMemory(newRecord->OriginalVtbl, lpVtbl, maxOffset * sizeof(PVOID));
 
 	//
 	// Modify the table inplace. We have to change the memory protection
 	// because usually tables are stored in the .data/.rdata section which is readonly.
 	//
 
-	SIZE_T regionSize = NumberOfEntry * sizeof(PVOID);
+	SIZE_T regionSize = NumberOfEntries * sizeof(PVOID);
 	UINT oldProtect;
 
 	status = NtProtectVirtualMemory(
@@ -140,11 +140,11 @@ KEXAPI NTSTATUS NTAPI KexVtblRewriteInplace(
 	try
 	{
 
-		for (UINT j = 0; j < NumberOfEntry; j++)
+		for (UINT j = 0; j < NumberOfEntries; j++)
 		{
 
-			SIZE_T Offset = Entry[j].ByteOffset / sizeof(PVOID);
-			pVtbl[Offset] = Entry[j].Function;
+			SIZE_T Offset = Entries[j].ByteOffset / sizeof(PVOID);
+			ppVtbl[Offset] = Entries[j].Function;
 
 		}
 	} except(GetExceptionCode() == STATUS_ACCESS_VIOLATION)
@@ -178,9 +178,9 @@ KEXAPI NTSTATUS NTAPI KexVtblRewriteInplace(
 	// Insert the record into the hash table.
 	//
 
-	if (OriginalVFTable)
-		*OriginalVFTable = newObj->OriginalVFTable;
-	RtlInsertEntryHashTable(RewriteDataTable, &newObj->HashTableEntry, (ULONG_PTR)newObj->RewrittenVFTable, NULL);
+	if (pOriginalVtbl)
+		*pOriginalVtbl = newRecord->OriginalVtbl;
+	RtlInsertEntryHashTable(pRewriteRecordTable, &newRecord->HashTableEntry, (ULONG_PTR)newRecord->RewrittenVtbl, NULL);
 
 Exit:
 	RtlReleaseSRWLockExclusive(&pSRWLock);
@@ -189,31 +189,31 @@ Exit:
 
 //
 // Decrease the reference count of a modified table.
-// You could call this function when an interface that is refering this table is truly released.
+// You could call this function when an interface that is referring this table is truly released.
 //
 
-KEXAPI VOID NTAPI KexVtblReleaseRewriteData(
+KEXAPI VOID NTAPI KexVtblUnpatchInplace(
 	IN	PVOID	lpVtbl)
 {
 	RtlAcquireSRWLockExclusive(&pSRWLock);
 
-	KEX_VFT_REWRITE_DATA* cur = NULL;
+	KEX_VTBL_REWRITE_DATA* currentRecord = NULL;
 	PRTL_DYNAMIC_HASH_TABLE_ENTRY pEntry;
 
-	pEntry = RtlLookupEntryHashTable(RewriteDataTable, (ULONG_PTR)lpVtbl, NULL);
+	pEntry = RtlLookupEntryHashTable(pRewriteRecordTable, (ULONG_PTR)lpVtbl, NULL);
 	if (pEntry)
 	{
-		cur = CONTAINING_RECORD(pEntry, KEX_VFT_REWRITE_DATA, HashTableEntry);
-		cur->RefCount--;
+		currentRecord = CONTAINING_RECORD(pEntry, KEX_VTBL_REWRITE_DATA, HashTableEntry);
+		currentRecord->RefCount--;
 
 		//
-		// Clear the record if there's no interface is refering this table.
+		// Clear the record if there's no interface is referring this table.
 		//
 
-		if (cur->RefCount == 0)
+		if (currentRecord->RefCount == 0)
 		{
 			BOOL HaveModifiedPageProtection = FALSE;
-			SIZE_T regionSize = cur->NumberOfFuncs * sizeof(PVOID);
+			SIZE_T regionSize = currentRecord->NumberOfFuncs * sizeof(PVOID);
 			PVOID baseAddress = lpVtbl;
 			UINT oldProtect;
 			NTSTATUS status;
@@ -237,14 +237,14 @@ KEXAPI VOID NTAPI KexVtblReleaseRewriteData(
 					L"Failed to resume the rewritten virtual function table (%p <- %p, %d functions)\r\n\r\n"
 					L"While attempting to change memory protections, encountered %s.",
 					lpVtbl,
-					cur->OriginalVFTable,
+					currentRecord->OriginalVtbl,
 					KexRtlNtStatusToString(status),
-					cur->NumberOfFuncs);
+					currentRecord->NumberOfFuncs);
 			}
 
 			try
 			{
-				CopyMemory(lpVtbl, cur->OriginalVFTable, cur->NumberOfFuncs * sizeof(PVOID));
+				CopyMemory(lpVtbl, currentRecord->OriginalVtbl, currentRecord->NumberOfFuncs * sizeof(PVOID));
 			} except(GetExceptionCode() == STATUS_ACCESS_VIOLATION)
 			{
 				//
@@ -258,11 +258,11 @@ KEXAPI VOID NTAPI KexVtblReleaseRewriteData(
 					L"Encountered STATUS_ACCESS_VIOLATION even after changing page protections.\r\n"
 					L"Maybe %p is not an effective address. (the module is unloaded etc.)",
 					lpVtbl,
-					cur->OriginalVFTable,
-					cur->NumberOfFuncs,
+					currentRecord->OriginalVtbl,
+					currentRecord->NumberOfFuncs,
 					lpVtbl);
 
-				cur->RefCount++;
+				currentRecord->RefCount++;
 				RtlReleaseSRWLockExclusive(&pSRWLock);
 				return;
 
@@ -277,28 +277,28 @@ KEXAPI VOID NTAPI KexVtblReleaseRewriteData(
 			);
 			ASSERT(NT_SUCCESS(status));
 
-			RtlRemoveEntryHashTable(RewriteDataTable, &cur->HashTableEntry, NULL);
-			HeapFree(GetProcessHeap(), 0, cur);
+			RtlRemoveEntryHashTable(pRewriteRecordTable, &currentRecord->HashTableEntry, NULL);
+			HeapFree(GetProcessHeap(), 0, currentRecord);
 		}
 	}
 
 	RtlReleaseSRWLockExclusive(&pSRWLock);
 }
 
-KEXAPI PPVOID NTAPI KexVtblFindOriginalVFTable(
-	IN	PVOID	RewrittenVFTable)
+KEXAPI PPVOID NTAPI KexVtblLookupOriginalTable(
+	IN	PVOID	PatchedVtbl)
 {
 	RtlAcquireSRWLockShared(&pSRWLock);
 
-	KEX_VFT_REWRITE_DATA* cur = NULL;
+	KEX_VTBL_REWRITE_DATA* currentRecord = NULL;
 	PRTL_DYNAMIC_HASH_TABLE_ENTRY pEntry;
 	PPVOID Result = NULL;
 
-	pEntry = RtlLookupEntryHashTable(RewriteDataTable, (ULONG_PTR)RewrittenVFTable, NULL);
+	pEntry = RtlLookupEntryHashTable(pRewriteRecordTable, (ULONG_PTR)PatchedVtbl, NULL);
 	if (pEntry)
 	{
-		cur = CONTAINING_RECORD(pEntry, KEX_VFT_REWRITE_DATA, HashTableEntry);
-		Result = cur->OriginalVFTable;
+		currentRecord = CONTAINING_RECORD(pEntry, KEX_VTBL_REWRITE_DATA, HashTableEntry);
+		Result = currentRecord->OriginalVtbl;
 	}
 
 	RtlReleaseSRWLockShared(&pSRWLock);
@@ -310,32 +310,32 @@ KEXAPI PPVOID NTAPI KexVtblFindOriginalVFTable(
 // I just create it for fun.
 //
 
-KEXAPI PPVOID NTAPI KexVtblFindRewrittenVFTable(
-	IN	PVOID	OriginalVFTable)
+KEXAPI PPVOID NTAPI KexVtblLookupPatchedTable(
+	IN	PVOID	OriginalVtbl)
 {
 	RtlAcquireSRWLockShared(&pSRWLock);
 
-	PPVOID pVtbl = (PPVOID)OriginalVFTable;
+	PPVOID ppVtbl = (PPVOID)OriginalVtbl;
 	PPVOID Result = NULL;
 
 	RTL_DYNAMIC_HASH_TABLE_ENUMERATOR enumerator;
 	PRTL_DYNAMIC_HASH_TABLE_ENTRY pEntry;
 
-	RtlInitEnumerationHashTable(RewriteDataTable, &enumerator);
-	pEntry = RtlEnumerateEntryHashTable(RewriteDataTable, &enumerator);
+	RtlInitEnumerationHashTable(pRewriteRecordTable, &enumerator);
+	pEntry = RtlEnumerateEntryHashTable(pRewriteRecordTable, &enumerator);
 	while (pEntry)
 	{
-		KEX_VFT_REWRITE_DATA* cur = CONTAINING_RECORD(pEntry, KEX_VFT_REWRITE_DATA, HashTableEntry);
+		KEX_VTBL_REWRITE_DATA* currentRecord = CONTAINING_RECORD(pEntry, KEX_VTBL_REWRITE_DATA, HashTableEntry);
 
-		PVOID p = (PVOID)cur->OriginalVFTable;
-		if (p == pVtbl)
+		PVOID currentVtbl = (PVOID)currentRecord->OriginalVtbl;
+		if (currentVtbl == ppVtbl)
 		{
-			Result = cur->RewrittenVFTable;
+			Result = currentRecord->RewrittenVtbl;
 			break;
 		}
-		pEntry = RtlEnumerateEntryHashTable(RewriteDataTable, &enumerator);
+		pEntry = RtlEnumerateEntryHashTable(pRewriteRecordTable, &enumerator);
 	}
-	RtlEndEnumerationHashTable(RewriteDataTable, &enumerator);
+	RtlEndEnumerationHashTable(pRewriteRecordTable, &enumerator);
 
 	RtlReleaseSRWLockShared(&pSRWLock);
 	return Result;
@@ -347,11 +347,11 @@ KEXAPI PPVOID NTAPI KexVtblFindRewrittenVFTable(
 // code between the caller and callee.
 // 
 // The structure of the replaced table (x64):
-// Bundles
+// Context
 // 	 pOriginalVtbl(void*)
 // 	 This(void*)
 //	 Misc(Unknown)
-// pBundles(void*)				 (p - 40)
+// pContext(void*)				 (p - 40)
 // ModuleAddrStart(void*)		 (p - 32)
 // ModuleAddrEnd(void*)			 (p - 24)
 // pOriginalVtbl(void*)			 (p - 16)
@@ -360,34 +360,34 @@ KEXAPI PPVOID NTAPI KexVtblFindRewrittenVFTable(
 // ModifiedVtbl(void*)*numFunc
 //
 
-KEXAPI BOOLEAN NTAPI KexVtblReplace(
+KEXAPI BOOLEAN NTAPI KexVtblWrap(
 	IN OUT	PVOID	Interface,
-	IN	PKEX_VFT_REPLACING_ENTRY	Entries,
+	IN	PKEX_VTBL_REPLACING_ENTRY	Entries,
 	IN  PVOID   RefVtbl,
 	IN  UINT    NumberOfEntries,
 	IN  UINT    NumberOfFuncs,
-	IN  SIZE_T  SizeOfBundles,
-	OUT PPKEX_VFT_WRAPPER  pBundles)
+	IN  SIZE_T  SizeOfContext,
+	OUT PPKEX_VTBL_WRAPPER  pContext)
 {
 	PPVOID lpVtbl = *(PPVOID*)(Interface);
 	PPVOID pRefVtbl = (PPVOID)(RefVtbl);
-	PCHAR data;
+	PCHAR wrapperBuffer;
 	PVOID moduleAddrStart = NULL;
 	PVOID moduleAddrEnd = NULL;
 
-	data = HeapAlloc(GetProcessHeap(), 0, SizeOfBundles
-					 + sizeof(KEX_VFT_WRAPPER)
-					 + sizeof(KEX_VFT_REPLACEMENT_WRAPPER)
+	wrapperBuffer = HeapAlloc(GetProcessHeap(), 0, SizeOfContext
+					 + sizeof(KEX_VTBL_WRAPPER)
+					 + sizeof(KEX_VTBL_REPLACEMENT_WRAPPER)
 					 + 2 * NumberOfFuncs * sizeof(PVOID));
-	if (data == NULL)
+	if (wrapperBuffer == NULL)
 		return FALSE;
 
-	KEX_VFT_WRAPPER* wrapper = (KEX_VFT_WRAPPER*)(data);
+	KEX_VTBL_WRAPPER* wrapper = (KEX_VTBL_WRAPPER*)(wrapperBuffer);
 	wrapper->lpVtbl = lpVtbl;
 	wrapper->This = Interface;
-	data += SizeOfBundles + sizeof(KEX_VFT_WRAPPER);
+	wrapperBuffer += SizeOfContext + sizeof(KEX_VTBL_WRAPPER);
 
-	PPVOID wrapcallTable = (PPVOID)(data + sizeof(KEX_VFT_REPLACEMENT_WRAPPER));
+	PPVOID wrapcallTable = (PPVOID)(wrapperBuffer + sizeof(KEX_VTBL_REPLACEMENT_WRAPPER));
 	PPVOID modifiedTable = wrapcallTable + NumberOfFuncs;
 	try
 	{
@@ -403,7 +403,7 @@ KEXAPI BOOLEAN NTAPI KexVtblReplace(
 				{
 					moduleAddrStart = (PVOID)1ULL;
 					modifiedTable[i] = pRefVtbl[i];
-					wrapcallTable[i] = ExternalOnlyVWrapCallFuncTable[i];
+					wrapcallTable[i] = ExternalOnlyWrapCallFuncTable[i];
 				}
 			}
 		}
@@ -424,16 +424,16 @@ KEXAPI BOOLEAN NTAPI KexVtblReplace(
 		SIZE_T offset = Entries[j].ByteOffset / sizeof(PVOID);
 		if (Entries[j].Function)
 		{
-			if (Entries[j].Mode == KEX_VFT_REPLACING_EXTERNAL_ONLY)
+			if (Entries[j].Mode == KEX_VTBL_REPLACING_EXTERNAL_ONLY)
 			{
 				modifiedTable[offset] = Entries[j].Function;
-				wrapcallTable[offset] = ExternalOnlyVWrapCallFuncTable[offset];
+				wrapcallTable[offset] = ExternalOnlyWrapCallFuncTable[offset];
 				moduleAddrStart = (PVOID)1ULL;
 			}
 			else
 			{
 				modifiedTable[offset] = Entries[j].Function;
-				wrapcallTable[offset] = VWrapCallFuncTable[offset];
+				wrapcallTable[offset] = WrapCallFuncTable[offset];
 			}
 		}
 		else
@@ -450,42 +450,42 @@ KEXAPI BOOLEAN NTAPI KexVtblReplace(
 		moduleAddrEnd = (PVOID)((PCHAR)dllEntry->DllBase + dllEntry->SizeOfImage);
 	}
 
-	KEX_VFT_REPLACEMENT_WRAPPER* rWrapper;
-	rWrapper = (KEX_VFT_REPLACEMENT_WRAPPER*)(data);
-	rWrapper->pBundles = wrapper;
+	KEX_VTBL_REPLACEMENT_WRAPPER* rWrapper;
+	rWrapper = (KEX_VTBL_REPLACEMENT_WRAPPER*)(wrapperBuffer);
+	rWrapper->pContext = wrapper;
 	rWrapper->OriginalVtbl = lpVtbl;
 	rWrapper->ModifiedVtbl = modifiedTable;
 	rWrapper->ModuleAddrStart = moduleAddrStart;
 	rWrapper->ModuleAddrEnd = moduleAddrEnd;
 
 	*(PPVOID*)(Interface) = wrapcallTable;
-	if (pBundles)
-		*pBundles = wrapper;
+	if (pContext)
+		*pContext = wrapper;
 
 	return TRUE;
 }
 
-KEXAPI VOID NTAPI KexVtblGetReplaceBundles(
+KEXAPI VOID NTAPI KexVtblGetWrapperContext(
 	IN	PVOID	Interface,
-	OUT PPVOID  pBundles,
+	OUT PPVOID  pContext,
 	OUT PPVOID  pOriginalVtbl)
 {
 	PCHAR lpVtbl = *(PCHAR*)(Interface);
-	KEX_VFT_REPLACEMENT_WRAPPER* rWrapper;
-	rWrapper = (KEX_VFT_REPLACEMENT_WRAPPER*)(lpVtbl - sizeof(KEX_VFT_REPLACEMENT_WRAPPER));
+	KEX_VTBL_REPLACEMENT_WRAPPER* rWrapper;
+	rWrapper = (KEX_VTBL_REPLACEMENT_WRAPPER*)(lpVtbl - sizeof(KEX_VTBL_REPLACEMENT_WRAPPER));
 
-	if (pBundles)
-		*pBundles = rWrapper->pBundles;
+	if (pContext)
+		*pContext = rWrapper->pContext;
 	if (pOriginalVtbl)
 		*pOriginalVtbl = rWrapper->OriginalVtbl;
 }
 
-KEXAPI VOID NTAPI KexVtblReleaseReplaceData(
+KEXAPI VOID NTAPI KexVtblUnwrap(
 	IN	PVOID	Interface)
 {
 	PCHAR lpVtbl = *(PCHAR*)(Interface);
-	KEX_VFT_REPLACEMENT_WRAPPER* rWrapper;
-	rWrapper = (KEX_VFT_REPLACEMENT_WRAPPER*)(lpVtbl - sizeof(KEX_VFT_REPLACEMENT_WRAPPER));
+	KEX_VTBL_REPLACEMENT_WRAPPER* rWrapper;
+	rWrapper = (KEX_VTBL_REPLACEMENT_WRAPPER*)(lpVtbl - sizeof(KEX_VTBL_REPLACEMENT_WRAPPER));
 
 	try
 	{
@@ -494,5 +494,5 @@ KEXAPI VOID NTAPI KexVtblReleaseReplaceData(
 	{
 
 	}
-	HeapFree(GetProcessHeap(), 0, rWrapper->pBundles);
+	HeapFree(GetProcessHeap(), 0, rWrapper->pContext);
 }

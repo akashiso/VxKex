@@ -62,12 +62,12 @@ ID2D1Effect* PatchColorManagement(ID2D1Effect* effect)
 {
 	IID2D1ColorManagementPatch* patch;
 
-	KEX_VFT_REPLACING_ENTRY rpl[] = {
-		{offsetof(ID2D1EffectVtbl, GetValue), IID2D1ColorManagementPatch_GetValue, KEX_VFT_REPLACING_EXTERNAL_ONLY},
-		{offsetof(ID2D1EffectVtbl, SetValue), IID2D1ColorManagementPatch_SetValue, KEX_VFT_REPLACING_EXTERNAL_ONLY}
+	KEX_VTBL_REPLACING_ENTRY rpl[] = {
+		{offsetof(ID2D1EffectVtbl, GetValue), IID2D1ColorManagementPatch_GetValue, KEX_VTBL_REPLACING_EXTERNAL_ONLY},
+		{offsetof(ID2D1EffectVtbl, SetValue), IID2D1ColorManagementPatch_SetValue, KEX_VTBL_REPLACING_EXTERNAL_ONLY}
 	};
-	if (!KexVtblReplace(effect, rpl, NULL, 2, sizeof(ID2D1EffectVtbl) / sizeof(PVOID) + 2,
-						sizeof(IID2D1ColorManagementPatch) - sizeof(KEX_VFT_WRAPPER), (PPKEX_VFT_WRAPPER)&patch))
+	if (!KexVtblWrap(effect, rpl, NULL, 2, sizeof(ID2D1EffectVtbl) / sizeof(PVOID) + 2,
+						sizeof(IID2D1ColorManagementPatch) - sizeof(KEX_VTBL_WRAPPER), (PPKEX_VTBL_WRAPPER)&patch))
 		return NULL;
 
 	patch->isSetDstColorSpaceCalled = FALSE;

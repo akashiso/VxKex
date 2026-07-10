@@ -56,7 +56,7 @@ ULONG STDMETHODCALLTYPE IID2D1EffectContext_Release(
 	ULONG RefCount = This->lpVtbl->Release(This->Thi);
 
 	if (RefCount == 0)
-		KexVtblReleaseReplaceData(&lpVtbl);
+		KexVtblUnwrap(&lpVtbl);
 
 	return RefCount;
 }
@@ -246,11 +246,11 @@ ID2D1EffectContext* WrapEffectContext(
 {
 	IID2D1EffectContext2* ctx2;
 
-	KEX_VFT_REPLACING_ENTRY rpl[] = {
-		{offsetof(IUnknownVtbl, Release), IID2D1EffectContext_Release, KEX_VFT_REPLACING_ALL}
+	KEX_VTBL_REPLACING_ENTRY rpl[] = {
+		{offsetof(IUnknownVtbl, Release), IID2D1EffectContext_Release, KEX_VTBL_REPLACING_ALL}
 	};
-	if (!KexVtblReplace(effectCtx, rpl, IID2D1EffectContext2Vtbl, 1, ARRAYSIZE(IID2D1EffectContext2Vtbl),
-						sizeof(IID2D1EffectContext2) - sizeof(KEX_VFT_WRAPPER), (PPKEX_VFT_WRAPPER)&ctx2))
+	if (!KexVtblWrap(effectCtx, rpl, IID2D1EffectContext2Vtbl, 1, ARRAYSIZE(IID2D1EffectContext2Vtbl),
+						sizeof(IID2D1EffectContext2) - sizeof(KEX_VTBL_WRAPPER), (PPKEX_VTBL_WRAPPER)&ctx2))
 		return NULL;
 
 	ctx2->factory = (IID2D1Factory1To8*)fact;
@@ -289,7 +289,7 @@ HRESULT STDMETHODCALLTYPE IID2D1EffectImpl_Release(
 	if (RefCount == 1)
 	{
 		This->lpVtbl->Release(This->Thi);
-		KexVtblReleaseReplaceData(&lpVtbl);
+		KexVtblUnwrap(&lpVtbl);
 	}
 
 	return RefCount - 1;
@@ -322,13 +322,13 @@ ID2D1EffectImpl* WrapEffectImpl(
 
 	IID2D1EffectImpl* ctx2;
 
-	KEX_VFT_REPLACING_ENTRY rpl[] = {
-		{offsetof(IUnknownVtbl, QueryInterface), IID2D1EffectImpl_QueryInterface, KEX_VFT_REPLACING_EXTERNAL_ONLY},
-		{offsetof(IUnknownVtbl, Release), IID2D1EffectImpl_Release, KEX_VFT_REPLACING_ALL},
-		{offsetof(ID2D1EffectImplVtbl, Initialize), IID2D1EffectImpl_Initialize, KEX_VFT_REPLACING_EXTERNAL_ONLY}
+	KEX_VTBL_REPLACING_ENTRY rpl[] = {
+		{offsetof(IUnknownVtbl, QueryInterface), IID2D1EffectImpl_QueryInterface, KEX_VTBL_REPLACING_EXTERNAL_ONLY},
+		{offsetof(IUnknownVtbl, Release), IID2D1EffectImpl_Release, KEX_VTBL_REPLACING_ALL},
+		{offsetof(ID2D1EffectImplVtbl, Initialize), IID2D1EffectImpl_Initialize, KEX_VTBL_REPLACING_EXTERNAL_ONLY}
 	};
-	if (!KexVtblReplace(effectRef, rpl, NULL, ARRAYSIZE(rpl), sizeof(ID2D1EffectImplVtbl) / sizeof(PVOID) + 10/*Reserved space*/,
-						sizeof(IID2D1EffectImpl) - sizeof(KEX_VFT_WRAPPER), (PPKEX_VFT_WRAPPER)&ctx2))
+	if (!KexVtblWrap(effectRef, rpl, NULL, ARRAYSIZE(rpl), sizeof(ID2D1EffectImplVtbl) / sizeof(PVOID) + 10/*Reserved space*/,
+						sizeof(IID2D1EffectImpl) - sizeof(KEX_VTBL_WRAPPER), (PPKEX_VTBL_WRAPPER)&ctx2))
 		return NULL;
 
 	ctx2->factory = (IID2D1Factory1To8*)fact;
