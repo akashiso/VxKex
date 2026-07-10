@@ -53,7 +53,7 @@ ULONG STDMETHODCALLTYPE IID2D1Factory1_Release(
 	RefCount = This->lpVtbl->Base.Base.Release((IUnknown*)This->Thi);
 	if (RefCount == 0)
 	{
-		KexVtblReleaseReplaceData(&lpVtbl);
+		KexVtblUnwrap(&lpVtbl);
 
 		UINT numAlive = InterlockedDecrement(&NumFactoryAlive);
 		if (numAlive == 0)
@@ -315,11 +315,11 @@ IID2D1Factory1To8* CreateIID2D1Factory1To8(ID2D1Factory1* pFactory1)
 {
 	IID2D1Factory1To8* factory;
 
-	KEX_VFT_REPLACING_ENTRY rpl[] = {
-		{offsetof(IUnknownVtbl, Release), IID2D1Factory1_Release, KEX_VFT_REPLACING_ALL}
+	KEX_VTBL_REPLACING_ENTRY rpl[] = {
+		{offsetof(IUnknownVtbl, Release), IID2D1Factory1_Release, KEX_VTBL_REPLACING_ALL}
 	};
-	if (!KexVtblReplace(pFactory1, rpl, IID2D1Factory1To8Vtbl, 1, ARRAYSIZE(IID2D1Factory1To8Vtbl),
-						sizeof(PVOID) * 2, (PPKEX_VFT_WRAPPER)&factory))
+	if (!KexVtblWrap(pFactory1, rpl, IID2D1Factory1To8Vtbl, 1, ARRAYSIZE(IID2D1Factory1To8Vtbl),
+						sizeof(PVOID) * 2, (PPKEX_VTBL_WRAPPER)&factory))
 		return NULL;
 
 	factory->effectFactoryList = NULL;
