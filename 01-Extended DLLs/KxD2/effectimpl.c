@@ -882,110 +882,132 @@ HRESULT STDMETHODCALLTYPE CreateWhiteLevelAdjustmentEffect(IUnknown** out)
 	return S_OK;
 }
 
-const float tempTintTable[] = {
-	0.18006f, 0.26352f, -0.24341f, 1.0e-10f,
-	0.18066f, 0.26589f, -0.25479f, 0.000010f,
-	0.18133f, 0.26846f, -0.26876f, 0.000020f,
-	0.18208f, 0.27119f, -0.28539f, 0.000030f,
-	0.18293f, 0.27407f, -0.30470f, 0.000040f,
-	0.18388f, 0.27709f, -0.32675f, 0.000050f,
-	0.18494f, 0.28021f, -0.35156f, 0.000060f,
-	0.18611f, 0.28342f, -0.37915f, 0.000070f,
-	0.18740f, 0.28668f, -0.40955f, 0.000080f,
-	0.18880f, 0.28997f, -0.44278f, 0.000090f,
-	0.19032f, 0.29326f, -0.47888f, 0.000100f,
-	0.19462f, 0.30141f, -0.58204f, 0.000125f,
-	0.19962f, 0.30921f, -0.70471f, 0.000150f,
-	0.20525f, 0.31647f, -0.84901f, 0.000175f,
-	0.21142f, 0.32312f, -1.01820f, 0.000200f,
-	0.21807f, 0.32909f, -1.21680f, 0.000225f,
-	0.22511f, 0.33439f, -1.45120f, 0.000250f,
-	0.23247f, 0.33904f, -1.72980f, 0.000275f,
-	0.24010f, 0.34308f, -2.06370f, 0.000300f,
-	0.24792f, 0.34655f, -2.46810f, 0.000325f,
-	0.25591f, 0.34951f, -2.96410f, 0.000350f,
-	0.26400f, 0.35200f, -3.58140f, 0.000375f,
-	0.27218f, 0.35407f, -4.36330f, 0.000400f,
-	0.28039f, 0.35577f, -5.37620f, 0.000425f,
-	0.28863f, 0.35714f, -6.72620f, 0.000450f,
-	0.29685f, 0.35823f, -8.59550f, 0.000475f,
-	0.30505f, 0.35907f, -11.3240f, 0.000500f,
-	0.31320f, 0.35968f, -15.6280f, 0.000525f,
-	0.32129f, 0.36011f, -23.3250f, 0.000550f,
-	0.32931f, 0.36038f, -40.7700f, 0.000575f,
-	0.33724f, 0.36051f, -116.450f, 0.000600f
+#define NUM_PLANCKIAN_POINTS 31
+
+#define PLANCK_INV_TEMP_OFFSET    0.00015379698f
+#define PLANCK_TEMP_SCALE         0.0125f
+
+#define SRGB_TO_XYZ_11  3.2404542f
+#define SRGB_TO_XYZ_12 -1.5371385f
+#define SRGB_TO_XYZ_13 -0.4985314f
+#define SRGB_TO_XYZ_21 -0.969266f
+#define SRGB_TO_XYZ_22  1.8760108f
+#define SRGB_TO_XYZ_23  0.041556001f
+#define SRGB_TO_XYZ_31  0.055643398f
+#define SRGB_TO_XYZ_32 -0.20402589f
+#define SRGB_TO_XYZ_33  1.0572252f
+
+typedef struct
+{
+	float u;         // CIE 1960 u
+	float v;         // CIE 1960 v
+	float du;        // derivative
+	float invTemp;   // 1/T
+} PlanckianPoint;
+
+// from Wyszecki & Stiles "Color Science: Concepts and Methods, Quantitative Data and Formulae"
+static const PlanckianPoint planckianLocus[NUM_PLANCKIAN_POINTS] = {
+	{ 0.18006f,  0.26352f,  -0.24341f,  1.0e-10f  },
+	{ 0.18066f,  0.26589f,  -0.25479f,  0.000010f },
+	{ 0.18133f,  0.26846f,  -0.26876f,  0.000020f },
+	{ 0.18208f,  0.27119f,  -0.28539f,  0.000030f },
+	{ 0.18293f,  0.27407f,  -0.30470f,  0.000040f },
+	{ 0.18388f,  0.27709f,  -0.32675f,  0.000050f },
+	{ 0.18494f,  0.28021f,  -0.35156f,  0.000060f },
+	{ 0.18611f,  0.28342f,  -0.37915f,  0.000070f },
+	{ 0.18740f,  0.28668f,  -0.40955f,  0.000080f },
+	{ 0.18880f,  0.28997f,  -0.44278f,  0.000090f },
+	{ 0.19032f,  0.29326f,  -0.47888f,  0.000100f },
+	{ 0.19462f,  0.30141f,  -0.58204f,  0.000125f },
+	{ 0.19962f,  0.30921f,  -0.70471f,  0.000150f },
+	{ 0.20525f,  0.31647f,  -0.84901f,  0.000175f },
+	{ 0.21142f,  0.32312f,  -1.01820f,  0.000200f },
+	{ 0.21807f,  0.32909f,  -1.21680f,  0.000225f },
+	{ 0.22511f,  0.33439f,  -1.45120f,  0.000250f },
+	{ 0.23247f,  0.33904f,  -1.72980f,  0.000275f },
+	{ 0.24010f,  0.34308f,  -2.06370f,  0.000300f },
+	{ 0.24792f,  0.34655f,  -2.46810f,  0.000325f },
+	{ 0.25591f,  0.34951f,  -2.96410f,  0.000350f },
+	{ 0.26400f,  0.35200f,  -3.58140f,  0.000375f },
+	{ 0.27218f,  0.35407f,  -4.36330f,  0.000400f },
+	{ 0.28039f,  0.35577f,  -5.37620f,  0.000425f },
+	{ 0.28863f,  0.35714f,  -6.72620f,  0.000450f },
+	{ 0.29685f,  0.35823f,  -8.59550f,  0.000475f },
+	{ 0.30505f,  0.35907f,  -11.3240f,  0.000500f },
+	{ 0.31320f,  0.35968f,  -15.6280f,  0.000525f },
+	{ 0.32129f,  0.36011f,  -23.3250f,  0.000550f },
+	{ 0.32931f,  0.36038f,  -40.7700f,  0.000575f },
+	{ 0.33724f,  0.36051f,  -116.450f,  0.000600f }
 };
 
-void TempTintToYUV(float coeff, float a2, float* y, float* u, float* v)
+void TempTintToCie1960YUV(float temp, float tint, float* y, float* u, float* v)
 {
-	coeff = 1.0f / coeff;
+	temp = 1.0f / temp;
 
 	UINT colorIndex = 1;
-	const float* pos = tempTintTable + 4;
 
 	do
 	{
-		if (coeff >= *(pos - 4) && *pos >= coeff)
+		if (temp >= planckianLocus[colorIndex - 1].invTemp && planckianLocus[colorIndex].invTemp >= temp)
 			break;
 
 		++colorIndex;
-		pos += 4;
-	} while (colorIndex < 31);
+	} while (colorIndex < NUM_PLANCKIAN_POINTS);
 
-	if (colorIndex >= 31)
-		colorIndex = 30;
+	if (colorIndex >= NUM_PLANCKIAN_POINTS)
+		colorIndex = NUM_PLANCKIAN_POINTS - 1;
 
-	float prevW = tempTintTable[4 * colorIndex - 1];
-	float curW = tempTintTable[4 * colorIndex + 3];
-	float coeff0;
+	const PlanckianPoint* low = planckianLocus + colorIndex - 1;
+	const PlanckianPoint* high = planckianLocus + colorIndex;
 
-	if (curW == prevW)
-		coeff0 = 0.5f;
+	float t;
+	float invRange = high->invTemp - low->invTemp;
+	if (invRange == 0.0f)
+		t = 0.5f;
 	else
-		coeff0 = (coeff - prevW) / (curW - prevW);
+		t = (temp - low->invTemp) / invRange;
 
-	float prevZ = tempTintTable[4 * colorIndex - 2];
-	float prevZ1 = 1.f / sqrtf(prevZ * prevZ + 1.0f);
-	float Zdiff = prevZ * prevZ1;
+	float prevSlope = low->du;
+	float curSlope = high->du;
 
-	float Y = tempTintTable[4 * colorIndex + 2];
-	float Y1 = 1.f / sqrtf(Y * Y + 1.0f);
+	float prevNorm = 1.0f / sqrtf(prevSlope * prevSlope + 1.0f);
+	float curNorm = 1.0f / sqrtf(curSlope * curSlope + 1.0f);
 
-	float valV = (tempTintTable[4 * colorIndex + 1] - tempTintTable[4 * colorIndex - 3]) * coeff0
-		+ tempTintTable[4 * colorIndex - 3];
+	float baseV = (high->v - low->v) * t + low->v;
+	float baseU = (high->u - low->u) * t + low->u;
 
-	float valU = (tempTintTable[4 * colorIndex] - tempTintTable[4 * colorIndex - 4]) * coeff0
-		+ tempTintTable[4 * colorIndex - 4];
+	float sinAngle = (curSlope * curNorm - prevSlope * prevNorm) * t + prevSlope * prevNorm;
+	float cosAngle = (curNorm - prevNorm) * t + prevNorm;
+	float tanAngle = sinAngle / cosAngle;
 
-	float val0 = ((Y * Y1 - Zdiff) * coeff0 + Zdiff)
-		/ ((Y1 - prevZ1) * coeff0 + prevZ1);
-
-	float val3 = a2 / sqrtf(val0 * val0 + 1.0f);
+	float offsetMag = tint / sqrtf(tanAngle * tanAngle + 1.0f);
+	float offsetU = -offsetMag;
+	float offsetV = -offsetMag * tanAngle;
 
 	*y = 1.0f;
-	*u = -val3 + valU;
-	*v = (-val3 * val0) + valV;
+	*u = baseU + offsetU;
+	*v = baseV + offsetV;
 
 	// MapUV
-	float z = *v;
-	float dy = 0.4f - (*u * 0.1f);
+	float vV = *v;
+	float uU = 0.4f - (*u * 0.1f);
 
-	if (z > dy)
+	if (vV > uU)
 	{
-		float coeff0 = (dy - z) / (valV - (*u - valU) * 0.1f - z);
+		float offset = (uU - vV) / (baseV - offsetU * 0.1f - vV);
 
-		*u = (valU - *u) * coeff0 + *u;
-		*v = (valV - z) * coeff0 + z;
+		*u -= offsetU * offset;
+		*v -= offsetV * offset;
 	}
 }
 
-void TempTintToXYZ(float coeff, float a2, float* x, float* y, float* z)
+void TempTintToXYZ(float temp, float tint, float* x, float* y, float* z)
 {
 	float Y;
 	float V;
 	float U;
 
-	TempTintToYUV(max(1666.6666f, coeff), min(0.1f, max(-0.1f, a2)), &Y, &U, &V);
+	TempTintToCie1960YUV(max(1666.6666f, temp), min(0.1f, max(-0.1f, tint)), &Y, &U, &V);
 	// Yuv1960toXYZ(v7[0], v9, v8, p_x, p_y, p_z);
 
 	*x = 0.0f;
@@ -999,42 +1021,60 @@ void TempTintToXYZ(float coeff, float a2, float* x, float* y, float* z)
 	}
 }
 
-void TempTint_CalcGains(float* xv, float* yv, float temp, float tint)
+void TempTint_CalcGains(float* gain_r, float* gain_b, float temp, float tint)
 {
 	temp *= 100.f;
 
-	float coeff0 = 6502.0781f;
-	float coeff1 = 6502.0781f;
+	float invTemp0 = 6502.0781f;
+	float invTemp1 = 6502.0781f;
 	if (temp < 0.0f)
 	{
-		coeff0 = 1.0f / (0.00015379698f - temp * 0.0125f * 0.000084298255f);
-		coeff1 = 1.0f / (0.00015379698f - temp * 0.0125f * -0.000053796983f);
+		invTemp0 = 1.0f / (PLANCK_INV_TEMP_OFFSET - temp * PLANCK_TEMP_SCALE * 0.000084298255f);
+		invTemp1 = 1.0f / (PLANCK_INV_TEMP_OFFSET - temp * PLANCK_TEMP_SCALE * -0.000053796983f);
 	}
 	else
 	{
-		coeff1 = 1.0f / (temp * 0.0125f * 0.000068425245f + 0.00015379698f);
+		invTemp1 = 1.0f / (temp * PLANCK_TEMP_SCALE * 0.000068425245f + PLANCK_INV_TEMP_OFFSET);
 	}
 
-	float y;
-	float x;
-	float z;
-	TempTintToXYZ(coeff0, 0.003256f, &x, &y, &z);
+	float x0;
+	float y0;
+	float z0;
+	TempTintToXYZ(invTemp0, 0.003256f, &x0, &y0, &z0);
 
-	float y0 = y;
-	float x0 = x;
-	float z0 = z;
-	float div0 = y * 1.8760108f - x * 0.969266f + z * 0.041556001f;
+	float x1;
+	float y1;
+	float z1;
+	TempTintToXYZ(invTemp1, tint * 1.25f * 0.01f + 0.0032560001f, &x1, &y1, &z1);
+	
+	float div_base = y0 * SRGB_TO_XYZ_22 + x0 * SRGB_TO_XYZ_21 + z0 * SRGB_TO_XYZ_23;
+	float div_target = y1 * SRGB_TO_XYZ_22 + x1 * SRGB_TO_XYZ_21 + z1 * SRGB_TO_XYZ_23;
 
-	TempTintToXYZ(coeff1, tint * 1.25f * 0.01f + 0.0032560001f, &x, &y, &z);
-	float val0 = y * 1.8760108f - x * 0.969266f + z * 0.041556001f;
-	float val1 = (x * 3.2404542f - y * 1.5371385f - z * 0.4985314f) / val0;
+	float r_target = (x1 * SRGB_TO_XYZ_11 + y1 * SRGB_TO_XYZ_12 + z1 * SRGB_TO_XYZ_13) / div_target;
+	float r_base = (x0 * SRGB_TO_XYZ_11 + y0 * SRGB_TO_XYZ_12 + z0 * SRGB_TO_XYZ_13) / div_base;
+	*gain_r = r_target / r_base;
 
-	*yv = ((x * 0.055643398f - y * 0.20402589f + z * 1.0572252f) / val0)
-		/ ((x0 * 0.055643398f - y0 * 0.20402589f + z0 * 1.0572252f) / div0);
-	*xv = val1
-		/ ((x0 * 3.2404542f - y0 * 1.5371385f - z0 * 0.4985314f) / div0);
+	float b_target = (x1 * SRGB_TO_XYZ_31 + y1 * SRGB_TO_XYZ_32 + z1 * SRGB_TO_XYZ_33) / div_target;
+	float b_base = (x0 * SRGB_TO_XYZ_31 + y0 * SRGB_TO_XYZ_32 + z0 * SRGB_TO_XYZ_33) / div_base;
+	*gain_b = b_target / b_base;
 }
 
+STATIC HRESULT UpdateColorMatrix(
+	IN IID2D1EffectWrapper* effect)
+{
+	float gain_r, gain_b;
+	TempTint_CalcGains(&gain_r, &gain_b, effect->Data[0], effect->Data[1]);
+
+	D2D_MATRIX_5X4_F mat;
+	ZeroMemory(&mat, sizeof(D2D_MATRIX_5X4_F));
+
+	mat._11 = gain_r;
+	mat._22 = 1.0f;
+	mat._33 = gain_b;
+	mat._44 = 1.0f;
+
+	return effect->effect->lpVtbl->SetValue(effect->effect, 0, D2D1_PROPERTY_TYPE_MATRIX_5X4, (BYTE*)&mat, sizeof(D2D_MATRIX_5X4_F));
+}
 
 HRESULT CALLBACK TemperatureTintEffect_SetTint(
 	IUnknown* effect1,
@@ -1042,25 +1082,13 @@ HRESULT CALLBACK TemperatureTintEffect_SetTint(
 	UINT32 dataSize
 )
 {
-	if (dataSize != sizeof(float))
+	if (dataSize != sizeof(float)) 
 		return E_INVALIDARG;
 
-	float x, y;
-	const float* src = (const float*)data;
 	IID2D1EffectWrapper* effect = (IID2D1EffectWrapper*)effect1;
-	D2D_MATRIX_5X4_F mat;
-	ZeroMemory(&mat, sizeof(D2D_MATRIX_5X4_F));
+	effect->Data[1] = *(const float*)data;
 
-	effect->Data[1] = *src;
-	TempTint_CalcGains(&x, &y, effect->Data[0], effect->Data[1]);
-
-	mat._11 = x;
-	mat._22 = 1.0f;
-	mat._33 = y;
-	mat._44 = 1.0f;
-
-	effect->effect->lpVtbl->SetValue(effect->effect, 0, D2D1_PROPERTY_TYPE_MATRIX_5X4, (BYTE*)&mat, sizeof(D2D_MATRIX_5X4_F));
-	return S_OK;
+	return UpdateColorMatrix(effect);
 }
 
 HRESULT CALLBACK TemperatureTintEffect_GetTint(
@@ -1089,25 +1117,13 @@ HRESULT CALLBACK TemperatureTintEffect_SetTemperature(
 	UINT32 dataSize
 )
 {
-	if (dataSize != sizeof(float))
+	if (dataSize != sizeof(float)) 
 		return E_INVALIDARG;
 
-	float x, y;
-	const float* src = (const float*)data;
 	IID2D1EffectWrapper* effect = (IID2D1EffectWrapper*)effect1;
-	D2D_MATRIX_5X4_F mat;
-	ZeroMemory(&mat, sizeof(D2D_MATRIX_5X4_F));
+	effect->Data[0] = *(const float*)data;
 
-	effect->Data[0] = *src;
-	TempTint_CalcGains(&x, &y, effect->Data[0], effect->Data[1]);
-
-	mat._11 = x;
-	mat._22 = 1.0f;
-	mat._33 = y;
-	mat._44 = 1.0f;
-
-	effect->effect->lpVtbl->SetValue(effect->effect, 0, D2D1_PROPERTY_TYPE_MATRIX_5X4, (BYTE*)&mat, sizeof(D2D_MATRIX_5X4_F));
-	return S_OK;
+	return UpdateColorMatrix(effect);
 }
 
 HRESULT CALLBACK TemperatureTintEffect_GetTemperature(
