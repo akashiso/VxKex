@@ -22,7 +22,7 @@
     <ProjectGuid>{7656FF69-D1A3-4FA1-AB04-7C0089777CA7}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>KexDll</RootNamespace>
-    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>7.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -79,14 +79,14 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
     <GenerateManifest>false</GenerateManifest>
-    <OutDir>$(SolutionDir)00-Import Libraries\</OutDir>
+    <OutDir>$(SolutionDir)$(Configuration)\</OutDir>
     <TargetExt>.dll</TargetExt>
     <ImportLibrary>$(SolutionDir)00-Import Libraries\KexDll.lib</ImportLibrary>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
     <GenerateManifest>false</GenerateManifest>
-    <OutDir>$(SolutionDir)00-Import Libraries\</OutDir>
+    <OutDir>$(SolutionDir)$(Platform)\$(Configuration)\</OutDir>
     <TargetExt>.dll</TargetExt>
     <ImportLibrary>$(SolutionDir)00-Import Libraries\KexDll.lib</ImportLibrary>
   </PropertyGroup>

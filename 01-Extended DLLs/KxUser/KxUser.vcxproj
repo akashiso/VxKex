@@ -112,6 +112,7 @@
       <EntryPointSymbol>DllMain</EntryPointSymbol>
       <SetChecksum>true</SetChecksum>
       <AdditionalOptions>/ignore:4104 /ignore:4197 %(AdditionalOptions)</AdditionalOptions>
+      <ForceFileOutput>Enabled</ForceFileOutput>
     </Link>
     <ResourceCompile>
       <AdditionalIncludeDirectories>$(SolutionDir)\00-Common Headers</AdditionalIncludeDirectories>
@@ -185,6 +186,7 @@
       <EntryPointSymbol>DllMain</EntryPointSymbol>
       <SetChecksum>true</SetChecksum>
       <AdditionalOptions>/ignore:4104 /ignore:4197 %(AdditionalOptions)</AdditionalOptions>
+      <ForceFileOutput>Enabled</ForceFileOutput>
     </Link>
     <ResourceCompile>
       <AdditionalIncludeDirectories>$(SolutionDir)\00-Common Headers</AdditionalIncludeDirectories>

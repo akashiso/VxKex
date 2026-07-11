@@ -82,9 +82,9 @@ VOID KexSetupWriteUninstallEntry(
 		StringCchPrintf(UninstallString, ARRAYSIZE(UninstallString), L"%s\\KexSetup.exe /UNINSTALL", KexDir);
 		
 		KexSetupRegWriteString(KeyHandle, L"DisplayIcon",		DisplayIcon);
-		KexSetupRegWriteString(KeyHandle, L"DisplayName",		L"VxKex API Extensions for Windows? 7");
+		KexSetupRegWriteString(KeyHandle, L"DisplayName",		L"VxKex API Extensions for Windows 7");
 		KexSetupRegWriteString(KeyHandle, L"DisplayVersion",	_L(KEX_VERSION_STR));
-		KexSetupRegWriteString(KeyHandle, L"Publisher",			L"YuZhouRen");
+		KexSetupRegWriteString(KeyHandle, L"Publisher",			L"akashiso");
 		KexSetupRegWriteString(KeyHandle, L"InstallDate",		FormattedDate);
 		KexSetupRegWriteString(KeyHandle, L"InstallLocation",	KexDir);
 		KexSetupRegWriteString(KeyHandle, L"UninstallString",	UninstallString);
@@ -180,7 +180,7 @@ VOID KexSetupAddKexCfgScheduledTask(
 			L"<?xml version='1.0' encoding='UTF-16'?>\r\n"
 			L"<Task version='1.3' xmlns='http://schemas.microsoft.com/windows/2004/02/mit/task'>\r\n"
 			L"  <RegistrationInfo>\r\n"
-			L"    <Author>YuZhouRen</Author>\r\n"
+			L"    <Author>akashiso</Author>\r\n"
 			L"    <Source>VxKex</Source>\r\n"
 			L"    <Description>\r\n"
 			L"This scheduled task is run on-demand by VxKex components and utilities (for example, "
@@ -400,12 +400,13 @@ VOID KexSetupInstallFiles(
 
 	//
 	// Install bitness agnostic data to KexDir.
-	// This includes everything in Core\, as well as the current program
+	// This includes everything in Core\ and Data\, as well as the current program
 	// (kexsetup.exe).
 	//
 	
 	KexSetupMoveFileSpecToDirectory(L".\\KexSetup.*", KexDir);
 	KexSetupMoveFileSpecToDirectory(L".\\Core\\*", KexDir);
+	KexSetupMoveFileSpecToDirectory(L".\\Data\\*", KexDir);
 
 	//
 	// Install KexDll to system32, and to syswow64 if 64bit OS.

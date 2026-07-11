@@ -106,7 +106,8 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <ModuleDefinitionFile>kxgaming.def</ModuleDefinitionFile>
       <AdditionalLibraryDirectories>$(TargetDir);$(SolutionDir)\00-Import Libraries</AdditionalLibraryDirectories>
-      <AdditionalDependencies>hid.lib</AdditionalDependencies>
+      <AdditionalDependencies>
+      </AdditionalDependencies>
       <EntryPointSymbol>DllMain</EntryPointSymbol>
       <SetChecksum>true</SetChecksum>
     </Link>
@@ -137,7 +138,8 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <ModuleDefinitionFile>kxgaming.def</ModuleDefinitionFile>
       <AdditionalLibraryDirectories>$(TargetDir);$(SolutionDir)\00-Import Libraries</AdditionalLibraryDirectories>
-      <AdditionalDependencies>hid.lib</AdditionalDependencies>
+      <AdditionalDependencies>
+      </AdditionalDependencies>
       <EntryPointSymbol>DllMain</EntryPointSymbol>
       <SetChecksum>true</SetChecksum>
     </Link>
@@ -175,7 +177,8 @@
       <OptimizeReferences>true</OptimizeReferences>
       <ModuleDefinitionFile>kxgaming.def</ModuleDefinitionFile>
       <AdditionalLibraryDirectories>$(TargetDir);$(SolutionDir)\00-Import Libraries</AdditionalLibraryDirectories>
-      <AdditionalDependencies>hid.lib</AdditionalDependencies>
+      <AdditionalDependencies>
+      </AdditionalDependencies>
       <EntryPointSymbol>DllMain</EntryPointSymbol>
       <SetChecksum>true</SetChecksum>
     </Link>
@@ -213,7 +216,8 @@
       <OptimizeReferences>true</OptimizeReferences>
       <ModuleDefinitionFile>kxgaming.def</ModuleDefinitionFile>
       <AdditionalLibraryDirectories>$(TargetDir);$(SolutionDir)\00-Import Libraries</AdditionalLibraryDirectories>
-      <AdditionalDependencies>hid.lib</AdditionalDependencies>
+      <AdditionalDependencies>
+      </AdditionalDependencies>
       <EntryPointSymbol>DllMain</EntryPointSymbol>
       <SetChecksum>true</SetChecksum>
     </Link>

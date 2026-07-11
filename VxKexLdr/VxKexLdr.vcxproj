@@ -101,8 +101,7 @@
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>$(TargetDir);$(SolutionDir)\00-Import Libraries</AdditionalLibraryDirectories>
-      <AdditionalDependencies>
-      </AdditionalDependencies>
+      <AdditionalDependencies>libcmt.lib</AdditionalDependencies>
       <SetChecksum>true</SetChecksum>
       <DelayLoadDLLs>ole32.dll;comdlg32.dll;user32.dll;shell32.dll;comctl32.dll;gdi32.dll</DelayLoadDLLs>
     </Link>
@@ -174,8 +173,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <AdditionalLibraryDirectories>$(TargetDir);$(SolutionDir)\00-Import Libraries</AdditionalLibraryDirectories>
-      <AdditionalDependencies>
-      </AdditionalDependencies>
+      <AdditionalDependencies>libcmt.lib</AdditionalDependencies>
       <SetChecksum>true</SetChecksum>
       <DelayLoadDLLs>ole32.dll;comdlg32.dll;user32.dll;shell32.dll;comctl32.dll;gdi32.dll</DelayLoadDLLs>
     </Link>
