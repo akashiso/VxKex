@@ -12,6 +12,7 @@ if /i "%1"=="/RELEASE" (
 
 md Archive
 md Archive\Core
+md Archive\Data
 md Archive\Core32
 md Archive\Core64
 md Archive\Kex32
@@ -25,6 +26,8 @@ copy ..\..\%DBGREL%\KexSetup.exe Archive\ >nul
 
 copy "..\..\00-Documentation\Application Compatibility List.docx" Archive\Core\ >nul
 copy "..\..\00-Documentation\Changelog.txt" Archive\Core\ >nul
+
+copy "..\..\02-Prebuilt Data\icudtl.dat" Archive\Data\ >nul
 
 REM
 REM 32-bit Core
@@ -48,6 +51,8 @@ copy ..\..\%DBGREL%\KxCrt.dll Archive\Kex32\ >nul
 copy ..\..\%DBGREL%\KxCryp.dll Archive\Kex32\ >nul
 copy ..\..\%DBGREL%\KxDw.dll Archive\Kex32\ >nul
 copy ..\..\%DBGREL%\KxDx.dll Archive\Kex32\ >nul
+copy ..\..\%DBGREL%\KxD2.dll Archive\Kex32\ >nul
+copy ..\..\%DBGREL%\KxSChanl.dll Archive\Kex32\ >nul
 copy ..\..\%DBGREL%\KxGaming.dll Archive\Kex32\ >nul
 copy ..\..\%DBGREL%\KxMi.dll Archive\Kex32\ >nul
 copy ..\..\%DBGREL%\KxNet.dll Archive\Kex32\ >nul
@@ -78,6 +83,8 @@ copy ..\..\x64\%DBGREL%\KxCrt.dll Archive\Kex64\ >nul
 copy ..\..\x64\%DBGREL%\KxCryp.dll Archive\Kex64\ >nul
 copy ..\..\x64\%DBGREL%\KxDw.dll Archive\Kex64\ >nul
 copy ..\..\x64\%DBGREL%\KxDx.dll Archive\Kex64\ >nul
+copy ..\..\x64\%DBGREL%\KxD2.dll Archive\Kex64\ >nul
+copy ..\..\x64\%DBGREL%\KxSChanl.dll Archive\Kex64\ >nul
 copy ..\..\x64\%DBGREL%\KxGaming.dll Archive\Kex64\ >nul
 copy ..\..\x64\%DBGREL%\KxMi.dll Archive\Kex64\ >nul
 copy ..\..\x64\%DBGREL%\KxNet.dll Archive\Kex64\ >nul
@@ -112,6 +119,8 @@ if %DBGREL%==Debug (
 	copy ..\..\%DBGREL%\KxCryp.pdb Archive\Kex32\ >nul
 	copy ..\..\%DBGREL%\KxDw.pdb Archive\Kex32\ >nul
 	copy ..\..\%DBGREL%\KxDx.pdb Archive\Kex32\ >nul
+	copy ..\..\%DBGREL%\KxD2.pdb Archive\Kex32\ >nul
+	copy ..\..\%DBGREL%\KxSChanl.pdb Archive\Kex32\ >nul
 	copy ..\..\%DBGREL%\KxGaming.pdb Archive\Kex32\ >nul
 	copy ..\..\%DBGREL%\KxMi.pdb Archive\Kex32\ >nul
 	copy ..\..\%DBGREL%\KxNet.pdb Archive\Kex32\ >nul
@@ -134,6 +143,8 @@ if %DBGREL%==Debug (
 	copy ..\..\x64\%DBGREL%\KxCryp.pdb Archive\Kex64\ >nul
 	copy ..\..\x64\%DBGREL%\KxDw.pdb Archive\Kex64\ >nul
 	copy ..\..\x64\%DBGREL%\KxDx.pdb Archive\Kex64\ >nul
+	copy ..\..\x64\%DBGREL%\KxD2.pdb Archive\Kex64\ >nul
+	copy ..\..\x64\%DBGREL%\KxSChanl.pdb Archive\Kex64\ >nul
 	copy ..\..\x64\%DBGREL%\KxGaming.pdb Archive\Kex64\ >nul
 	copy ..\..\x64\%DBGREL%\KxMi.pdb Archive\Kex64\ >nul
 	copy ..\..\x64\%DBGREL%\KxNet.pdb Archive\Kex64\ >nul

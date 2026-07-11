@@ -361,4 +361,5 @@ MigrationBackup/
 FodyWeavers.xsd
 *.tar
 
-00-Import Libraries/KexDll.*
+00-Import Libraries/Kex*.*
+Kex*.exe

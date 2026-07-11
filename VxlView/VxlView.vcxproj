@@ -94,13 +94,13 @@
       <ExceptionHandling>false</ExceptionHandling>
       <BasicRuntimeChecks>Default</BasicRuntimeChecks>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <ControlFlowGuard>false</ControlFlowGuard>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>$(TargetDir);$(SolutionDir)\00-Import Libraries</AdditionalLibraryDirectories>
-      <AdditionalDependencies>
-      </AdditionalDependencies>
+      <AdditionalDependencies>libcmt.lib</AdditionalDependencies>
       <Profile>false</Profile>
       <SetChecksum>true</SetChecksum>
       <DelayLoadDLLs>comdlg32.dll</DelayLoadDLLs>
@@ -170,6 +170,7 @@
       <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
       <FavorSizeOrSpeed>Size</FavorSizeOrSpeed>
       <OmitFramePointers>true</OmitFramePointers>
+      <ControlFlowGuard>false</ControlFlowGuard>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -177,8 +178,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <AdditionalLibraryDirectories>$(TargetDir);$(SolutionDir)\00-Import Libraries</AdditionalLibraryDirectories>
-      <AdditionalDependencies>
-      </AdditionalDependencies>
+      <AdditionalDependencies>libcmt.lib</AdditionalDependencies>
       <Profile>false</Profile>
       <SetChecksum>true</SetChecksum>
       <DelayLoadDLLs>comdlg32.dll</DelayLoadDLLs>

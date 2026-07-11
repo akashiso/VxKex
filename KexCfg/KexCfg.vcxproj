@@ -106,8 +106,7 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>
-      </AdditionalDependencies>
+      <AdditionalDependencies>libcmt.lib</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(TargetDir);$(SolutionDir)\00-Import Libraries</AdditionalLibraryDirectories>
       <EntryPointSymbol>EntryPoint</EntryPointSymbol>
       <SetChecksum>true</SetChecksum>
@@ -192,8 +191,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>
-      </AdditionalDependencies>
+      <AdditionalDependencies>libcmt.lib</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(TargetDir);$(SolutionDir)\00-Import Libraries</AdditionalLibraryDirectories>
       <EntryPointSymbol>EntryPoint</EntryPointSymbol>
       <SetChecksum>true</SetChecksum>
