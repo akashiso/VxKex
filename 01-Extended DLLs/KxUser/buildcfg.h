@@ -6,7 +6,6 @@
 #define NOWINSTYLES
 #define NOMENUS
 #define NOICONS
-#define NOKEYSTATES
 #define NOSYSCOMMANDS
 #define NORASTEROPS
 #define NOSHOWWINDOW
@@ -19,9 +18,7 @@
 #define NOMB
 #define NOMEMMGR
 #define NOOPENFILE
-#define NOSCROLL
 #define NOTEXTMETRIC
-#define NOWINOFFSETS
 #define NOCOMM
 #define NOKANJI
 #define NOHELP
