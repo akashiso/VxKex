@@ -579,11 +579,14 @@ HRESULT EventHandlersAppend(
 
 	RtlAcquireSRWLockExclusive(&eventHandlerSRWLock);
 
+	handler->lpVtbl->AddRef(handler);
+
 	*token = entry->token = nextToken;
 	nextToken.value++;
 	
 	IEventHandlerEntry* cur = *list;
 	entry->prev = cur;
+	entry->handler = handler;
 	*list = cur;
 
 	RtlReleaseSRWLockExclusive(&eventHandlerSRWLock);
@@ -614,6 +617,7 @@ HRESULT EventHandlersRemove(
 			prev->prev = cur->prev;
 
 		RtlReleaseSRWLockExclusive(&eventHandlerSRWLock);
+		cur->handler->lpVtbl->Release(cur->handler);
 		CoTaskMemFree(cur);
 		return S_OK;
 	}
@@ -625,11 +629,15 @@ HRESULT EventHandlersRemove(
 void EventHandlersRemoveAll(
 	OUT IEventHandlerEntry** list)
 {
+	if (*list == NULL)
+		return;
+
 	IEventHandlerEntry* cur = *list;
 	IEventHandlerEntry* prev;
 	while (cur != NULL)
 	{
 		prev = cur->prev;
+		cur->handler->lpVtbl->Release(cur->handler);
 		CoTaskMemFree(cur);
 		cur = prev;
 	}
@@ -646,7 +654,7 @@ void EventHandlersNotify(
 	IEventHandlerEntry* cur = list;
 	while (cur != NULL)
 	{
-		cur->handler->lpVtbl->Invoke(cur->handler, NULL, thiz);
+		cur->handler->lpVtbl->Invoke(cur->handler, thiz, thiz);
 		cur = cur->prev;
 	}
 

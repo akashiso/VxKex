@@ -205,6 +205,10 @@ DEFINE_GUID(IID_IDispatcherQueue, 0x603E88E4, 0xA338, 0x4FFE, 0xA4, 0x57, 0xA5, 
 // {c822c647-30ef-506e-bd1e-a647ae6675ff}
 DEFINE_GUID(IID_IDispatcherQueue2, 0xc822c647, 0x30ef, 0x506e, 0xbd, 0x1e, 0xa6, 0x47, 0xae, 0x66, 0x75, 0xff);
 
+// Windows.System.IDispatcherQueueTimer
+// {5feabb1d-a31c-4727-b1ac-37454649d56a}
+DEFINE_GUID(IID_IDispatcherQueueTimer, 0x5feabb1d, 0xa31c, 0x4727, 0xb1, 0xac, 0x37, 0x45, 0x46, 0x49, 0xd5, 0x6a);
+
 // Windows.System.IDispatcherQueueStatics
 // {A96D83D7-9371-4517-9245-D0824AC12C74}
 DEFINE_GUID(IID_IDispatcherQueueStatics, 0xA96D83D7, 0x9371, 0x4517, 0x92, 0x45, 0xD0, 0x82, 0x4A, 0xC1, 0x2C, 0x74);
@@ -1294,6 +1298,51 @@ typedef struct _IDispatcherQueue
 
 extern IDispatcherQueueVtbl CDispatcherQueueVtbl;
 extern IDispatcherQueue2Vtbl CDispatcherQueue2Vtbl;
+
+// System : Windows.System.IDispatcherQueueTimer
+
+typedef struct _IDispatcherQueueTimer IDispatcherQueueTimer;
+
+typedef struct _IDispatcherQueueTimerVtbl
+{
+	// IUnknown
+	HRESULT(STDMETHODCALLTYPE* QueryInterface) (IDispatcherQueueTimer*, REFIID, PPVOID);
+	ULONG(STDMETHODCALLTYPE* AddRef) (IDispatcherQueueTimer*);
+	ULONG(STDMETHODCALLTYPE* Release) (IDispatcherQueueTimer*);
+
+	// IInspectable
+	HRESULT(STDMETHODCALLTYPE* GetIids) (IDispatcherQueueTimer*, PULONG, IID**);
+	HRESULT(STDMETHODCALLTYPE* GetRuntimeClassName) (IDispatcherQueueTimer*, HSTRING*);
+	HRESULT(STDMETHODCALLTYPE* GetTrustLevel) (IDispatcherQueueTimer*, TrustLevel*);
+
+	// IDispatcherQueueTimer
+	HRESULT(STDMETHODCALLTYPE* get_Interval) (IDispatcherQueueTimer*, INT64*);
+	HRESULT(STDMETHODCALLTYPE* put_Interval) (IDispatcherQueueTimer*, INT64);
+	HRESULT(STDMETHODCALLTYPE* get_IsRunning) (IDispatcherQueueTimer*, BOOL*);
+	HRESULT(STDMETHODCALLTYPE* get_IsRepeating) (IDispatcherQueueTimer*, BOOL*);
+	HRESULT(STDMETHODCALLTYPE* put_IsRepeating) (IDispatcherQueueTimer*, BOOL);
+	HRESULT(STDMETHODCALLTYPE* Start) (IDispatcherQueueTimer*);
+	HRESULT(STDMETHODCALLTYPE* Stop) (IDispatcherQueueTimer*);
+	HRESULT(STDMETHODCALLTYPE* add_Tick) (IDispatcherQueueTimer*, ITypedEventHandler*, EventRegistrationToken*);
+	HRESULT(STDMETHODCALLTYPE* remove_Tick) (IDispatcherQueueTimer*, EventRegistrationToken);
+
+} IDispatcherQueueTimerVtbl;
+
+typedef struct _IDispatcherQueueTimer
+{
+	IDispatcherQueueTimerVtbl* lpVtbl;
+	LONG RefCount;
+
+	IDispatcherQueue* queue;
+	HANDLE hTimer;
+	BOOL IsRunning;
+	BOOL IsRepeating;
+	ULONG Interval;
+
+	IEventHandlerEntry* tick;
+} IDispatcherQueueTimer;
+
+extern IDispatcherQueueTimerVtbl CDispatcherQueueTimerVtbl;
 
 // System : Windows.System.IDispatcherQueueController
 

@@ -7,10 +7,10 @@
 
 // System : Windows.System.IDispatcherQueueController
 
-#define KEXDQMSG_COMMAND (WM_APP + 0xABC)
 #define KEXDQMSG_CMD_ENQUEUE 0xBADFACE0
-#define KEXDQMSG_CMD_SHUTDOWN 0xBADFACE1
-#define KEXDQMSG_CMD_SHUTDOWN_READY 0xBADFACE2
+#define KEXDQMSG_CMD_TIMER_TICK 0xBADFACE1
+#define KEXDQMSG_CMD_SHUTDOWN 0xBADFACE2
+#define KEXDQMSG_CMD_SHUTDOWN_READY 0xBADFACE3
 #define KEXDQMSG_MASK 0xBADFACE0
 
 typedef struct DispatcherQueueTask
@@ -20,8 +20,16 @@ typedef struct DispatcherQueueTask
 } DispatcherQueueTask;
 
 
+UINT uDispatcherMsg = 0;
+
 IDispatcherQueue* queues = NULL;
 RTL_SRWLOCK queuesLock = { 0 };
+
+STATIC VOID EnsureMessageRegistered()
+{
+	if (uDispatcherMsg == 0)
+		uDispatcherMsg = RegisterWindowMessage(L"VxKex_Internal_DispatcherQueue");
+}
 
 STATIC LRESULT CALLBACK DispatcherQueueGetMsgProc(
 	IN int    code,
@@ -32,10 +40,11 @@ STATIC LRESULT CALLBACK DispatcherQueueGetMsgProc(
 	MSG* msg = (MSG*)lParam;
 
 	if (code == HC_ACTION && wParam == 1
-		&& msg->message == KEXDQMSG_COMMAND)
+		&& msg->message == uDispatcherMsg)
 	{
 		DispatcherQueueTask* task = (DispatcherQueueTask*)msg->lParam;
 		IDispatcherQueue* q = task->queue;
+		IDispatcherQueueTimer* timer;
 
 		switch (msg->wParam)
 		{
@@ -44,10 +53,15 @@ STATIC LRESULT CALLBACK DispatcherQueueGetMsgProc(
 				task->call->lpVtbl->Release(task->call);
 				CoTaskMemFree(task);
 				break;
+			case KEXDQMSG_CMD_TIMER_TICK:
+				timer = (IDispatcherQueueTimer*)msg->lParam;
+				EventHandlersNotify(timer->tick, (IInspectable*)timer);
+				timer->lpVtbl->Release(timer);
+				break;
 			case KEXDQMSG_CMD_SHUTDOWN:
 				EventHandlersNotify(q->shutdownStart, (IInspectable*)q);
 				EventHandlersRemoveAll(&q->shutdownStart);
-				PostThreadMessage(GetCurrentThreadId(), KEXDQMSG_COMMAND, KEXDQMSG_CMD_SHUTDOWN_READY, lParam);
+				PostThreadMessage(GetCurrentThreadId(), uDispatcherMsg, KEXDQMSG_CMD_SHUTDOWN_READY, lParam);
 				break;
 			case KEXDQMSG_CMD_SHUTDOWN_READY:
 				if (q->Hook)
@@ -73,19 +87,23 @@ HRESULT DispatcherQueueCreateOnThread(
 	IN DWORD dwThreadId,
 	OUT IDispatcherQueue** Object)
 {
-	HHOOK hook;
+	EnsureMessageRegistered();
+
+	HHOOK hook = NULL;
+	HANDLE hThread = NULL;
+	IDispatcherQueue* queue = NULL;
+
 	hook = SetWindowsHookEx(WH_GETMESSAGE, DispatcherQueueGetMsgProc, NULL, dwThreadId);
 	if (hook == NULL)
-		return E_FAIL;
+		goto Failed;
 
-	HANDLE hThread;
 	hThread = OpenThread(THREAD_QUERY_INFORMATION, FALSE, dwThreadId);
 	if (hThread == NULL)
-		return E_ACCESSDENIED;
+		goto Failed;
 
-	IDispatcherQueue* queue = (IDispatcherQueue*)CoTaskMemAlloc(sizeof(IDispatcherQueue));
+	queue = (IDispatcherQueue*)CoTaskMemAlloc(sizeof(IDispatcherQueue));
 	if (queue == NULL)
-		return E_OUTOFMEMORY;
+		goto Failed;
 
 	RtlAcquireSRWLockExclusive(&queuesLock);
 
@@ -105,6 +123,23 @@ HRESULT DispatcherQueueCreateOnThread(
 	RtlReleaseSRWLockExclusive(&queuesLock);
 	*Object = queue;
 	return S_OK;
+
+Failed:
+	if (hook)
+		UnhookWindowsHookEx(hook);
+
+	if (hThread)
+		CloseHandle(hThread);
+
+	if (queue)
+		CoTaskMemFree(queue);
+
+	if (hook == NULL || hThread == NULL)
+		return HRESULT_FROM_WIN32(GetLastError());
+	else if (queue == NULL)
+		return E_OUTOFMEMORY;
+
+	return E_FAIL;
 }
 
 STATIC DWORD WINAPI DispatcherQueueDedicatedThreadProc(
@@ -121,10 +156,11 @@ STATIC DWORD WINAPI DispatcherQueueDedicatedThreadProc(
 
 	while (GetMessage(&msg, (HWND)-1, 0, 0) != 0)
 	{
-		if (msg.message == KEXDQMSG_COMMAND)
+		if (msg.message == uDispatcherMsg)
 		{
 			DispatcherQueueTask* task = (DispatcherQueueTask*)msg.lParam;
 			IDispatcherQueue* q = task->queue;
+			IDispatcherQueueTimer* timer;
 
 			switch (msg.wParam)
 			{
@@ -132,6 +168,11 @@ STATIC DWORD WINAPI DispatcherQueueDedicatedThreadProc(
 					task->call->lpVtbl->Invoke(task->call);
 					task->call->lpVtbl->Release(task->call);
 					CoTaskMemFree(task);
+					break;
+				case KEXDQMSG_CMD_TIMER_TICK:
+					timer = (IDispatcherQueueTimer*)msg.lParam;
+					EventHandlersNotify(timer->tick, (IInspectable*)timer);
+					timer->lpVtbl->Release(timer);
 					break;
 				case KEXDQMSG_CMD_SHUTDOWN:
 					EventHandlersNotify(q->shutdownStart, (IInspectable*)q);
@@ -161,19 +202,22 @@ STATIC DWORD WINAPI DispatcherQueueDedicatedThreadProc(
 HRESULT DispatcherQueueCreateOnNewThread(
 	OUT	IDispatcherQueue** Object)
 {
+	EnsureMessageRegistered();
+
 	DWORD threadId;
-	HANDLE hThread;
-	HANDLE msgQueueCreatedEvent;
+	HANDLE hThread = NULL;
+	HANDLE msgQueueCreatedEvent = NULL;
+	IDispatcherQueue* queue = NULL;
 
 	if ((msgQueueCreatedEvent = CreateEvent(NULL, TRUE, FALSE, NULL)) == NULL)
-		return E_FAIL;
+		goto Failed;
 
 	if ((hThread = CreateThread(NULL, 0, DispatcherQueueDedicatedThreadProc, msgQueueCreatedEvent, 0, &threadId)) == NULL)
-		return E_FAIL;
+		goto Failed;
 
-	IDispatcherQueue* queue = (IDispatcherQueue*)CoTaskMemAlloc(sizeof(IDispatcherQueue));
+	queue = (IDispatcherQueue*)CoTaskMemAlloc(sizeof(IDispatcherQueue));
 	if (queue == NULL)
-		return E_OUTOFMEMORY;
+		goto Failed;
 
 	RtlAcquireSRWLockExclusive(&queuesLock);
 
@@ -196,6 +240,23 @@ HRESULT DispatcherQueueCreateOnNewThread(
 	WaitForSingleObject(msgQueueCreatedEvent, INFINITE);
 	CloseHandle(msgQueueCreatedEvent);
 	return S_OK;
+
+Failed:
+	if (msgQueueCreatedEvent)
+		CloseHandle(msgQueueCreatedEvent);
+
+	if (hThread)
+		CloseHandle(hThread);
+
+	if (queue)
+		CoTaskMemFree(queue);
+
+	if (msgQueueCreatedEvent == NULL || hThread == NULL)
+		return HRESULT_FROM_WIN32(GetLastError());
+	else if (queue == NULL)
+		return E_OUTOFMEMORY;
+
+	return E_FAIL;
 }
 
 IDispatcherQueue* DispatcherQueueGetForThread(
@@ -241,8 +302,8 @@ STATIC HRESULT DispatcherQueueEnqueue(
 
 	task->queue = q->Parent;
 	task->call = callback;
-	if (!PostThreadMessage(q->Parent->dwThreadId, KEXDQMSG_COMMAND, KEXDQMSG_CMD_ENQUEUE, (LPARAM)task))
-		return E_FAIL;
+	if (!PostThreadMessage(q->Parent->dwThreadId, uDispatcherMsg, KEXDQMSG_CMD_ENQUEUE, (LPARAM)task))
+		return HRESULT_FROM_WIN32(GetLastError());
 	return S_OK;
 }
 
@@ -286,6 +347,121 @@ STATIC ULONG DispatcherQueueRelease(
 	return NewRefCount;
 }
 
+
+STATIC HRESULT DispatcherQueueCreateTimer(
+	IN	IDispatcherQueue* queue,
+	OUT IDispatcherQueueTimer** Object)
+{
+	if (Object == NULL) 
+		return E_POINTER;
+
+	IDispatcherQueueTimer* timer = (IDispatcherQueueTimer*)CoTaskMemAlloc(sizeof(IDispatcherQueueTimer));
+	if (!timer) 
+		return E_OUTOFMEMORY;
+
+	timer->lpVtbl = &CDispatcherQueueTimerVtbl;
+	timer->RefCount = 1;
+	timer->queue = queue->Parent;
+	timer->queue->lpVtbl->AddRef(timer->queue);
+	timer->Interval = 0;
+	timer->IsRunning = FALSE;
+	timer->IsRepeating = FALSE;
+	timer->hTimer = NULL;
+	InitializeEventHandlers(&timer->tick);
+
+	*Object = timer;
+	return S_OK;
+}
+
+STATIC VOID CALLBACK TimerQueueCallback(
+	IN PVOID Parameter,
+	IN BOOLEAN TimerOrWaitFired)
+{
+	IDispatcherQueueTimer* timer = (IDispatcherQueueTimer*)Parameter;
+	if (!TimerOrWaitFired)
+		return;
+
+	BOOL shouldTick = timer->IsRunning;
+	IDispatcherQueue* queue = timer->queue;
+
+	if (!shouldTick || !DispatcherQueueIsThreadAlive(queue))
+		goto Quit;
+
+	BOOL succeed = PostThreadMessage(queue->Parent->dwThreadId, uDispatcherMsg, KEXDQMSG_CMD_TIMER_TICK, (LPARAM)timer);
+	if (!succeed)
+		goto Quit;
+	else
+		timer->lpVtbl->AddRef(timer);
+	
+	if (!timer->IsRepeating)
+		goto Quit;
+
+	return;
+Quit:
+	timer->IsRunning = FALSE;
+	return;
+}
+
+STATIC HRESULT DispatcherQueueTimerStart(
+	IN	IDispatcherQueueTimer* timer)
+{
+	if (timer->hTimer)
+		return E_NOT_VALID_STATE;
+
+	timer->IsRunning = TRUE;
+	if (!CreateTimerQueueTimer(&timer->hTimer, NULL, TimerQueueCallback,
+							   timer, timer->Interval,
+							   timer->IsRepeating ? timer->Interval : 0,
+							   WT_EXECUTEDEFAULT))
+	{
+		timer->IsRunning = FALSE;
+		return HRESULT_FROM_WIN32(GetLastError());
+	}
+
+	return S_OK;
+}
+
+STATIC HRESULT DispatcherQueueTimerStop(
+	IN	IDispatcherQueueTimer* timer)
+{
+	timer->IsRunning = FALSE;
+
+	if (timer->hTimer)
+		if (!DeleteTimerQueueTimer(NULL, timer->hTimer, INVALID_HANDLE_VALUE))
+			return HRESULT_FROM_WIN32(GetLastError());
+
+	timer->hTimer = NULL;
+	return S_OK;
+}
+
+STATIC HRESULT DispatcherQueueTimerUpdateParameter(
+	IN	IDispatcherQueueTimer* timer)
+{
+	if (timer->hTimer)
+		if (!ChangeTimerQueueTimer(NULL, timer->hTimer, timer->Interval, timer->IsRepeating ? timer->Interval : 0))
+			return HRESULT_FROM_WIN32(GetLastError());
+
+	return S_OK;
+}
+
+STATIC ULONG DispatcherQueueTimerRelease(
+	IN	IDispatcherQueueTimer* timer)
+{
+	ULONG NewRefCount;
+	NewRefCount = InterlockedDecrement(&timer->RefCount);
+
+	if (NewRefCount == 0)
+	{
+		if (timer->hTimer)
+			DeleteTimerQueueTimer(NULL, timer->hTimer, INVALID_HANDLE_VALUE);
+
+		timer->queue->lpVtbl->Release(timer->queue);
+		EventHandlersRemoveAll(&timer->tick);
+		CoTaskMemFree(timer);
+	}
+
+	return NewRefCount;
+}
 
 KXCOMAPI HRESULT STDMETHODCALLTYPE DispatcherQueueController_QueryInterface(
 	IN	IDispatcherQueueController* This,
@@ -408,8 +584,11 @@ KXCOMAPI HRESULT STDMETHODCALLTYPE DispatcherQueueController_ShutdownQueueAsync(
 
 	IAsyncAction* action = CreateAsyncAction();
 
-	if (!PostThreadMessage(thiz->queue->dwThreadId, KEXDQMSG_COMMAND, KEXDQMSG_CMD_SHUTDOWN, (LPARAM)action))
+	if (!PostThreadMessage(thiz->queue->dwThreadId, uDispatcherMsg, KEXDQMSG_CMD_SHUTDOWN, (LPARAM)action))
+	{
+		IUnknown_Release(action);
 		return HRESULT_FROM_WIN32(GetLastError());
+	}
 
 	*out = action;
 	return S_OK;
@@ -495,7 +674,7 @@ KXCOMAPI HRESULT STDMETHODCALLTYPE DispatcherQueue_GetIids(
 	ASSERT(NumberOfIids != NULL);
 	ASSERT(IidArray != NULL);
 
-	Count = 1;
+	Count = 2;
 
 	Array = (IID*)CoTaskMemAlloc(Count * sizeof(IID));
 	if (!Array)
@@ -532,8 +711,7 @@ KXCOMAPI HRESULT STDMETHODCALLTYPE DispatcherQueue_CreateTimer(
 	IN	IDispatcherQueue* This,
 	OUT	PPVOID out)
 {
-	KexLogWarningEvent(L"Unimplemented function %s called", __FUNCTIONW__);
-	return E_NOTIMPL;
+	return DispatcherQueueCreateTimer(This, (IDispatcherQueueTimer**)out);
 }
 
 KXCOMAPI HRESULT STDMETHODCALLTYPE DispatcherQueue_TryEnqueue(
@@ -911,4 +1089,200 @@ IDispatcherQueueControllerStaticsVtbl CDispatcherQueueControllerStaticsVtbl = {
 
 IDispatcherQueueControllerStatics CDispatcherQueueControllerStatics = {
 	&CDispatcherQueueControllerStaticsVtbl
+};
+
+// System : Windows.System.IDispatcherQueueTimer
+//
+
+KXCOMAPI HRESULT STDMETHODCALLTYPE DispatcherQueueTimer_QueryInterface(
+	IN	IDispatcherQueueTimer* This,
+	IN	REFIID		RefIID,
+	OUT	PPVOID		Object)
+{
+	ASSERT(This != NULL);
+	ASSERT(RefIID != NULL);
+	ASSERT(Object != NULL);
+
+	*Object = NULL;
+
+	if (IsEqualIID(RefIID, &IID_IUnknown) ||
+		IsEqualIID(RefIID, &IID_IInspectable) ||
+		IsEqualIID(RefIID, &IID_IAgileObject) ||
+		IsEqualIID(RefIID, &IID_IDispatcherQueueTimer))
+	{
+		*Object = This;
+		InterlockedIncrement(&This->RefCount);
+	}
+	else
+	{
+		LPOLESTR IidAsString;
+
+		StringFromIID(RefIID, &IidAsString);
+
+		KexLogWarningEvent(
+			L"QueryInterface called with unsupported IID: %s",
+			IidAsString);
+
+		CoTaskMemFree(IidAsString);
+		return E_NOINTERFACE;
+	}
+
+	return S_OK;
+}
+
+KXCOMAPI ULONG STDMETHODCALLTYPE DispatcherQueueTimer_AddRef(
+	IN	IDispatcherQueueTimer* This)
+{
+	return InterlockedIncrement(&This->RefCount);
+}
+
+KXCOMAPI ULONG STDMETHODCALLTYPE DispatcherQueueTimer_Release(
+	IN	IDispatcherQueueTimer* This)
+{
+	return DispatcherQueueTimerRelease(This);
+}
+
+KXCOMAPI HRESULT STDMETHODCALLTYPE DispatcherQueueTimer_GetIids(
+	IN	IDispatcherQueueTimer* This,
+	OUT	PULONG		NumberOfIids,
+	OUT	IID** IidArray)
+{
+	IID* Array;
+	ULONG Count;
+
+	ASSERT(NumberOfIids != NULL);
+	ASSERT(IidArray != NULL);
+
+	Count = 1;
+
+	Array = (IID*)CoTaskMemAlloc(Count * sizeof(IID));
+	if (!Array)
+	{
+		return E_OUTOFMEMORY;
+	}
+
+	*NumberOfIids = Count;
+	Array[0] = IID_IDispatcherQueueTimer;
+
+	return S_OK;
+}
+
+KXCOMAPI HRESULT STDMETHODCALLTYPE DispatcherQueueTimer_GetRuntimeClassName(
+	IN	IDispatcherQueueTimer* This,
+	OUT	HSTRING* ClassName)
+{
+	PCWSTR Name = L"Windows.System.DispatcherQueueTimer";
+	ASSERT(ClassName != NULL);
+	return WindowsCreateString(Name, (ULONG)wcslen(Name), ClassName);
+}
+
+KXCOMAPI HRESULT STDMETHODCALLTYPE DispatcherQueueTimer_GetTrustLevel(
+	IN	IDispatcherQueueTimer* This,
+	OUT	TrustLevel* Level)
+{
+	ASSERT(Level != NULL);
+	*Level = BaseTrust;
+	return S_OK;
+}
+
+KXCOMAPI HRESULT STDMETHODCALLTYPE DispatcherQueueTimer_get_Interval(
+	IN IDispatcherQueueTimer* thiz,
+	OUT INT64* out)
+{
+	if (out == NULL)
+		return E_POINTER;
+
+	*out = thiz->Interval;
+	return S_OK;
+}
+
+KXCOMAPI HRESULT STDMETHODCALLTYPE DispatcherQueueTimer_put_Interval(
+	IN IDispatcherQueueTimer* thiz,
+	IN INT64 in)
+{
+	if (in < 0)
+		return E_INVALIDARG;
+
+	thiz->Interval = (ULONG)in;
+	return DispatcherQueueTimerUpdateParameter(thiz);
+}
+
+KXCOMAPI HRESULT STDMETHODCALLTYPE DispatcherQueueTimer_get_IsRunning(
+	IN IDispatcherQueueTimer* thiz,
+	OUT BOOL* out)
+{
+	if (out == NULL)
+		return E_POINTER;
+
+	*out = thiz->IsRunning;
+	return S_OK;
+}
+
+KXCOMAPI HRESULT STDMETHODCALLTYPE DispatcherQueueTimer_get_IsRepeating(
+	IN IDispatcherQueueTimer* thiz,
+	OUT BOOL* out)
+{
+	if (out == NULL)
+		return E_POINTER;
+
+	*out = thiz->IsRepeating;
+	return S_OK;
+}
+
+KXCOMAPI HRESULT STDMETHODCALLTYPE DispatcherQueueTimer_put_IsRepeating(
+	IN IDispatcherQueueTimer* thiz,
+	IN BOOL in)
+{
+	if (in < 0)
+		return E_INVALIDARG;
+
+	thiz->IsRepeating = in;
+	return DispatcherQueueTimerUpdateParameter(thiz);
+}
+
+KXCOMAPI HRESULT STDMETHODCALLTYPE DispatcherQueueTimer_Start(
+	IN IDispatcherQueueTimer* thiz)
+{
+	return DispatcherQueueTimerStart(thiz);
+}
+
+KXCOMAPI HRESULT STDMETHODCALLTYPE DispatcherQueueTimer_Stop(
+	IN IDispatcherQueueTimer* thiz)
+{
+	return DispatcherQueueTimerStop(thiz);
+}
+
+KXCOMAPI HRESULT STDMETHODCALLTYPE DispatcherQueueTimer_add_Tick(
+	IN	IDispatcherQueueTimer* This,
+	IN	ITypedEventHandler* in,
+	OUT	EventRegistrationToken* token)
+{
+	return EventHandlersAppend(&This->tick, in, token);
+}
+
+KXCOMAPI HRESULT STDMETHODCALLTYPE DispatcherQueueTimer_remove_Tick(
+	IN	IDispatcherQueueTimer* This,
+	IN	EventRegistrationToken token)
+{
+	return EventHandlersRemove(&This->tick, &token);
+}
+
+IDispatcherQueueTimerVtbl CDispatcherQueueTimerVtbl = {
+	DispatcherQueueTimer_QueryInterface,
+	DispatcherQueueTimer_AddRef,
+	DispatcherQueueTimer_Release,
+
+	DispatcherQueueTimer_GetIids,
+	DispatcherQueueTimer_GetRuntimeClassName,
+	DispatcherQueueTimer_GetTrustLevel,
+
+	DispatcherQueueTimer_get_Interval,
+	DispatcherQueueTimer_put_Interval,
+	DispatcherQueueTimer_get_IsRunning,
+	DispatcherQueueTimer_get_IsRepeating,
+	DispatcherQueueTimer_put_IsRepeating,
+	DispatcherQueueTimer_Start,
+	DispatcherQueueTimer_Stop,
+	DispatcherQueueTimer_add_Tick,
+	DispatcherQueueTimer_remove_Tick
 };
