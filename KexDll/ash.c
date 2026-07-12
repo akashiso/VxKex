@@ -26,6 +26,34 @@
 #include "kexdllp.h"
 
 //
+// Statically linked Qt6 applications tend to have a .qtmimed PE section in their
+// EXE file. We can check for this section to determine that an application has
+// statically-linked Qt6.
+//
+BOOLEAN AshIsStaticallyLinkedQt6Image(
+	IN	PVOID	ModuleBase)
+{
+	PIMAGE_NT_HEADERS NtHeaders;
+	ANSI_STRING SectionName;
+	PIMAGE_SECTION_HEADER SectionHeader;
+
+	NtHeaders = RtlImageNtHeader(ModuleBase);
+	ASSERT(NtHeaders != NULL);
+
+	if (NtHeaders == NULL)
+	{
+		return FALSE;
+	}
+
+	RtlInitConstantAnsiString(&SectionName, ".qtmimed");
+
+	SectionHeader = KexRtlSectionTableFromName(NtHeaders, &SectionName);
+
+	return (SectionHeader != NULL) ? TRUE : FALSE;
+}
+
+
+//
 // ExeName must include the .exe extension.
 //
 KEXAPI BOOLEAN NTAPI AshExeBaseNameIs(
@@ -46,6 +74,51 @@ KEXAPI BOOLEAN NTAPI AshExeBaseNameIs(
 	return RtlEqualUnicodeString(&KexData->ImageBaseName, &ExeNameUS, TRUE);
 }
 
+STATIC NTSTATUS AshpGetFullAndBaseNameFromAddress(
+	IN	PCVOID			AddressInsideModule,
+	OUT	PUNICODE_STRING	FullDllName OPTIONAL,
+	OUT	PUNICODE_STRING	BaseDllName OPTIONAL)
+{
+	NTSTATUS Status;
+	UNICODE_STRING FullDllNameTemp;
+
+	RtlInitEmptyUnicodeStringFromTeb(&FullDllNameTemp);
+
+	if (!FullDllName && !BaseDllName) {
+		// nothing to do
+		return STATUS_SUCCESS;
+	}
+
+	//
+	// Get full name.
+	// This can fail if the address is outside any module, which is true for
+	// JIT-generated code or obfuscated VM-protected code, for example.
+	//
+
+	Status = KexLdrGetDllFullNameFromAddress(
+		AddressInsideModule,
+		&FullDllNameTemp);
+
+	if (!NT_SUCCESS(Status)) {
+		return Status;
+	}
+
+	if (FullDllName) {
+		*FullDllName = FullDllNameTemp;
+	}
+
+	//
+	// Get base name if necessary
+	//
+
+	if (BaseDllName) {
+		Status = KexRtlPathFindFileName(&FullDllNameTemp, BaseDllName);
+		ASSERT(NT_SUCCESS(Status));
+	}
+
+	return Status;
+}
+
 //
 // This function is intended to be used like this:
 //
@@ -54,35 +127,18 @@ KEXAPI BOOLEAN NTAPI AshExeBaseNameIs(
 // File extension (.dll, .exe etc.) is required.
 //
 KEXAPI BOOLEAN NTAPI AshModuleBaseNameIs(
-	IN	PVOID	AddressInsideModule,
+	IN	PCVOID	AddressInsideModule,
 	IN	PCWSTR	ModuleName)
 {
 	NTSTATUS Status;
-	UNICODE_STRING DllFullPath;
-	UNICODE_STRING DllBaseName;
+	UNICODE_STRING BaseDllName;
 	UNICODE_STRING ComparisonBaseName;
 
-	RtlInitEmptyUnicodeStringFromTeb(&DllFullPath);
-
-	//
-	// Get the name of the DLL in which the specified address resides.
-	//
-
-	Status = KexLdrGetDllFullNameFromAddress(
+	Status = AshpGetFullAndBaseNameFromAddress(
 		AddressInsideModule,
-		&DllFullPath);
+		NULL,
+		&BaseDllName);
 
-	ASSERT (NT_SUCCESS(Status));
-
-	if (!NT_SUCCESS(Status)) {
-		return FALSE;
-	}
-
-	//
-	// Convert full path into base name.
-	//
-
-	Status = KexRtlPathFindFileName(&DllFullPath, &DllBaseName);
 	ASSERT (NT_SUCCESS(Status));
 
 	if (!NT_SUCCESS(Status)) {
@@ -96,7 +152,7 @@ KEXAPI BOOLEAN NTAPI AshModuleBaseNameIs(
 		return FALSE;
 	}
 
-	return RtlEqualUnicodeString(&DllBaseName, &ComparisonBaseName, TRUE);
+	return RtlEqualUnicodeString(&BaseDllName, &ComparisonBaseName, TRUE);
 }
 
 //
@@ -104,40 +160,47 @@ KEXAPI BOOLEAN NTAPI AshModuleBaseNameIs(
 // ReturnAddress() macro as the argument.
 //
 KEXAPI BOOLEAN NTAPI AshModuleIsWindowsModule(
-	IN	PVOID	AddressInsideModule)
+	IN	PCVOID	AddressInsideModule)
 {
 	NTSTATUS Status;
-	UNICODE_STRING DllFullPath;
+	UNICODE_STRING FullDllName;
+	UNICODE_STRING BaseDllName;
 
-	RtlInitEmptyUnicodeStringFromTeb(&DllFullPath);
-
-	//
-	// Get the name of the DLL in which the specified address resides.
-	//
-
-	Status = KexLdrGetDllFullNameFromAddress(
+	Status = AshpGetFullAndBaseNameFromAddress(
 		AddressInsideModule,
-		&DllFullPath);
-
-	ASSERT (NT_SUCCESS(Status));
+		&FullDllName,
+		&BaseDllName);
 
 	if (!NT_SUCCESS(Status)) {
 		return FALSE;
 	}
 
-	//
-	// See if it starts with %SystemRoot%.
-	//
+	return KexIsWindowsDll(&FullDllName, &BaseDllName);
+}
 
-	if (RtlPrefixUnicodeString(&KexData->WinDir, &DllFullPath, TRUE)) {
-		UNICODE_STRING SlashTemp;
-		KexRtlAdvanceUnicodeString(&DllFullPath, KexData->WinDir.Length);
-		RtlInitConstantUnicodeString(&SlashTemp, L"\\Temp");
-		if (RtlPrefixUnicodeString(&SlashTemp, &DllFullPath, TRUE)) return FALSE;
-		return TRUE;
-	} else {
+//
+// Similar to AshModuleIsWindowsModule but also returns TRUE for any DLL
+// which is banned from having its imports rewritten, which is related to but
+// not exactly the same set of DLLs as "Windows modules".
+//
+KEXAPI BOOLEAN NTAPI AshModuleIsDynamicRewriteExemptedModule(
+	IN	PCVOID	AddressInsideModule)
+{
+	NTSTATUS Status;
+	UNICODE_STRING FullDllName;
+	UNICODE_STRING BaseDllName;
+
+	Status = AshpGetFullAndBaseNameFromAddress(
+		AddressInsideModule,
+		&FullDllName,
+		&BaseDllName);
+
+	if (!NT_SUCCESS(Status))
+	{
 		return FALSE;
 	}
+
+	return !KexShouldRewriteDynamicImportsOfDll(&FullDllName, &BaseDllName);
 }
 
 VOID AshApplyQBittorrentEnvironmentVariableHacks(

@@ -97,6 +97,9 @@ VOID AshApplyPythonEnvironmentVariableHacks(
 VOID AshApplyNodeJSEnvironmentVariableHacks(
 	VOID);
 
+BOOLEAN AshIsStaticallyLinkedQt6Image(
+	IN	PVOID	ModuleBase);
+
 //
 // ashcrsup.c
 //
@@ -106,6 +109,9 @@ VOID AshDllLoadNotification(
 
 NTSTATUS AshPerformChromiumDetectionFromModuleExports(
 	IN	PVOID	ModuleBase);
+
+NTSTATUS AshSetIsQt6Process(
+	VOID);
 
 //
 // ashselec.c
@@ -144,8 +150,9 @@ NTSTATUS KexpAddKex3264ToDllPath(
 NTSTATUS KexInitializeDllRewrite(
 	VOID);
 
-BOOLEAN KexShouldRewriteImportsOfDll(
-	IN	PCUNICODE_STRING	FullDllName);
+BOOLEAN KexShouldRewriteStaticImportsOfDll(
+	IN	PCUNICODE_STRING	FullDllName,
+	IN	PCUNICODE_STRING	BaseDllName);
 
 NTSTATUS KexRewriteImageImportDirectory(
 	IN	PVOID					ImageBase,
@@ -162,6 +169,10 @@ NTSTATUS KexAddDllRewriteEntry(
 
 NTSTATUS KexRemoveDllRewriteEntry(
 	IN	PCUNICODE_STRING	DllName);
+
+KEXAPI BOOLEAN NTAPI KexShouldRewriteDynamicImportsOfDll(
+	IN	PCUNICODE_STRING	FullDllName,
+	IN	PCUNICODE_STRING	BaseDllName);
 
 //
 // kexdata.c

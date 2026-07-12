@@ -144,6 +144,13 @@ KXCFGDECLSPEC BOOLEAN KXCFGAPI KxCfgInstallDiskCleanupHandler(
 KXCFGDECLSPEC BOOLEAN KXCFGAPI KxCfgRemoveDiskCleanupHandler(
 	IN	HANDLE	TransactionHandle OPTIONAL);
 
+KXCFGDECLSPEC BOOLEAN KXCFGAPI KxCfgQueryLegacyKxSChanlSsp(
+	VOID);
+
+KXCFGDECLSPEC BOOLEAN KXCFGAPI KxCfgEnableLegacyKxSChanlSsp(
+	IN	BOOLEAN	Enable,
+	IN	HANDLE	TransactionHandle OPTIONAL);
+
 #ifdef KXCFGDECLSPEC
 //
 // Private functions
