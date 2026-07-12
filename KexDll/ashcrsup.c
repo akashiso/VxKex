@@ -121,6 +121,39 @@ NTSTATUS AshpSetIsDotnetProcess(
 	return STATUS_SUCCESS;
 }
 
+NTSTATUS AshSetIsQt6Process(
+	VOID)
+{
+	NTSTATUS Status;
+	UNICODE_STRING Variable;
+	UNICODE_STRING Value;
+	SIZE_T VariableValueLength = 0;
+
+	//
+	// See if it starts with %SystemRoot%.
+	// Users have reported that these variables can fix certain Qt6 programs
+	// which make use of Qt Quick Scene Graph (QSG).
+	// https://doc.qt.io/qt-6/qtquick-visualcanvas-scenegraph-renderer.html
+	// https://github.com/YuZhouRen86/VxKex-NEXT/issues/336
+	// Affected apps: AmneziaVPN, GPT4All
+	//
+
+	RtlInitConstantUnicodeString(&Variable, L"QSG_RHI_BACKEND");
+	RtlInitConstantUnicodeString(&Value, L"opengl");
+
+	Status = RtlQueryEnvironmentVariable(NULL, Variable.Buffer, Variable.Length / sizeof(WCHAR), NULL, 0, &VariableValueLength);
+	ASSERT(Status == STATUS_BUFFER_TOO_SMALL || Status == STATUS_VARIABLE_NOT_FOUND);
+
+	if (VariableValueLength == 0)
+	{
+		Status = RtlSetEnvironmentVariable(NULL, &Variable, &Value);
+		ASSERT(NT_SUCCESS(Status));
+	}
+
+	KexData->Flags |= KEXDATA_FLAG_QT6;
+	return STATUS_SUCCESS;
+}
+
 //
 // Call this function to inform the App-Specific Hack subsystem of a new
 // loaded DLL.
@@ -199,6 +232,25 @@ VOID AshDllLoadNotification(
 		if (RtlEqualUnicodeString(&BaseName, &CoreClr, TRUE))
 		{
 			Status = AshpSetIsDotnetProcess();
+			ASSERT(NT_SUCCESS(Status));
+			return;
+		}
+	}
+
+	unless(KexData->Flags& KEXDATA_FLAG_QT6)
+	{
+		UNICODE_STRING Qt6;
+
+		//
+		// APPSPECIFICHACK: Newer versions of Qt6 require Windows 10 DWrite.
+		// Otherwise, text is displayed as blank boxes.
+		//
+
+		RtlInitConstantUnicodeString(&Qt6, L"Qt6");
+
+		if (RtlPrefixUnicodeString(&Qt6, &BaseName, TRUE))
+		{
+			Status = AshSetIsQt6Process();
 			ASSERT(NT_SUCCESS(Status));
 			return;
 		}

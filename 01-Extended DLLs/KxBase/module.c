@@ -34,35 +34,13 @@
 #include <KexW32ML.h>
 #include <Shlwapi.h>
 
+// The Teb->KexLdrShouldRewriteDll flag repurposes an unused member of the TEB.
+// Its purpose is to tell KexDll that an Ext_* module function was called. It
+// causes KexDll to rewrite the DLL names which the Ext_* module functions have
+// received.
 //
-// These two utility functions make use of an unused field in the TEB.
-// Their purpose is to set KexLdrShouldRewriteDll to 1 whenever
-// Ext_GetModuleHandle(Ex)(A/W) or Ext_LoadLibrary(Ex)(A/W) is present in
-// the call stack.
+// KexDll functions are responsible for clearing the flag.
 //
-// When this happens, it means that an EXE or DLL outside of WinDir and KexDir
-// has called GetModuleHandle or LoadLibrary. It signals to Ext_LdrLoadDll
-// and Ext_LdrGetDllHandle so that they can avoid rewriting imports when it
-// isn't desired.
-//
-
-STATIC INLINE VOID InterceptedKernelBaseLoaderCallEntry(
-	OUT	PBOOLEAN	ReEntrant)
-{
-	PTEB Teb;
-
-	Teb = NtCurrentTeb();
-	*ReEntrant = Teb->KexLdrShouldRewriteDll;
-	Teb->KexLdrShouldRewriteDll = TRUE;
-}
-
-STATIC INLINE VOID InterceptedKernelBaseLoaderCallReturn(
-	IN	BOOLEAN		ReEntrant)
-{
-	if (!ReEntrant) {
-		NtCurrentTeb()->KexLdrShouldRewriteDll = FALSE;
-	}
-}
 
 STATIC NTSTATUS BasepGetDllDirectoryProcedure(
 	IN		PCSTR	ProcedureName,
@@ -111,14 +89,8 @@ STATIC NTSTATUS BasepGetDllDirectoryProcedure(
 KXBASEAPI HMODULE WINAPI Ext_GetModuleHandleA(
 	IN	PCSTR	ModuleName)
 {
-	HMODULE ModuleHandle;
-	BOOLEAN ReEntrant;
-
-	InterceptedKernelBaseLoaderCallEntry(&ReEntrant);
-	ModuleHandle = GetModuleHandleA(ModuleName);
-	InterceptedKernelBaseLoaderCallReturn(ReEntrant);
-
-	return ModuleHandle;
+	NtCurrentTeb()->KexLdrShouldRewriteDll = TRUE;
+	return GetModuleHandleA(ModuleName);
 }
 
 KXBASEAPI FARPROC WINAPI Ext_GetProcAddress(
@@ -149,9 +121,6 @@ KXBASEAPI FARPROC WINAPI Ext_GetProcAddress(
 KXBASEAPI HMODULE WINAPI Ext_GetModuleHandleW(
 	IN	PCWSTR	ModuleName)
 {
-	HMODULE ModuleHandle;
-	BOOLEAN ReEntrant;
-
 	//
 	// APPSPECIFICHACK: Chromium-based software uses a bootleg knockoff version of
 	// GetProcAddress that fails miserably and crashes the whole app when we rewrite
@@ -167,11 +136,8 @@ KXBASEAPI HMODULE WINAPI Ext_GetModuleHandleW(
 		return (HMODULE) KexData->SystemDllBase;
 	}
 
-	InterceptedKernelBaseLoaderCallEntry(&ReEntrant);
-	ModuleHandle = GetModuleHandleW(ModuleName);
-	InterceptedKernelBaseLoaderCallReturn(ReEntrant);
-
-	return ModuleHandle;
+	NtCurrentTeb()->KexLdrShouldRewriteDll = TRUE;
+	return GetModuleHandleW(ModuleName);
 }
 
 KXBASEAPI BOOL WINAPI Ext_GetModuleHandleExA(
@@ -179,14 +145,8 @@ KXBASEAPI BOOL WINAPI Ext_GetModuleHandleExA(
 	IN	PCSTR	ModuleName,
 	OUT	HMODULE	*ModuleHandleOut)
 {
-	BOOL Success;
-	BOOLEAN ReEntrant;
-
-	InterceptedKernelBaseLoaderCallEntry(&ReEntrant);
-	Success = GetModuleHandleExA(Flags, ModuleName, ModuleHandleOut);
-	InterceptedKernelBaseLoaderCallReturn(ReEntrant);
-
-	return Success;
+	NtCurrentTeb()->KexLdrShouldRewriteDll = TRUE;
+	return GetModuleHandleExA(Flags, ModuleName, ModuleHandleOut);
 }
 
 KXBASEAPI BOOL WINAPI Ext_GetModuleHandleExW(
@@ -194,14 +154,8 @@ KXBASEAPI BOOL WINAPI Ext_GetModuleHandleExW(
 	IN	PCWSTR	ModuleName,
 	OUT	HMODULE	*ModuleHandleOut)
 {
-	BOOL Success;
-	BOOLEAN ReEntrant;
-
-	InterceptedKernelBaseLoaderCallEntry(&ReEntrant);
-	Success = GetModuleHandleExW(Flags, ModuleName, ModuleHandleOut);
-	InterceptedKernelBaseLoaderCallReturn(ReEntrant);
-
-	return Success;
+	NtCurrentTeb()->KexLdrShouldRewriteDll = TRUE;
+	return GetModuleHandleExW(Flags, ModuleName, ModuleHandleOut);
 }
 
 STATIC PWSTR CopyPcstrToPwstr(
@@ -237,10 +191,9 @@ KXBASEAPI HMODULE WINAPI Ext_LoadLibraryExA(
 	IN	ULONG	Flags)
 {
 	HMODULE ModuleHandle;
-	BOOLEAN ReEntrant;
 	STATIC BOOL (WINAPI *SetDefaultDllDirectories) (ULONG) = NULL;
 
-	InterceptedKernelBaseLoaderCallEntry(&ReEntrant);
+	NtCurrentTeb()->KexLdrShouldRewriteDll = TRUE;
 	BasepGetDllDirectoryProcedure("SetDefaultDllDirectories", (PPVOID) &SetDefaultDllDirectories);
 	if (SetDefaultDllDirectories) {
 		ModuleHandle = LoadLibraryExA(FileName, FileHandle, Flags);
@@ -281,7 +234,6 @@ KXBASEAPI HMODULE WINAPI Ext_LoadLibraryExA(
 			}
 		}
 	}
-	InterceptedKernelBaseLoaderCallReturn(ReEntrant);
 
 	return ModuleHandle;
 }
@@ -292,10 +244,9 @@ KXBASEAPI HMODULE WINAPI Ext_LoadLibraryExW(
 	IN	ULONG	Flags)
 {
 	HMODULE ModuleHandle;
-	BOOLEAN ReEntrant;
 	STATIC BOOL (WINAPI *SetDefaultDllDirectories) (ULONG) = NULL;
 	
-	InterceptedKernelBaseLoaderCallEntry(&ReEntrant);
+	NtCurrentTeb()->KexLdrShouldRewriteDll = TRUE;
 	BasepGetDllDirectoryProcedure("SetDefaultDllDirectories", (PPVOID) &SetDefaultDllDirectories);
 	if (SetDefaultDllDirectories) {
 		ModuleHandle = LoadLibraryExW(FileName, FileHandle, Flags);
@@ -332,7 +283,6 @@ KXBASEAPI HMODULE WINAPI Ext_LoadLibraryExW(
 			}
 		}
 	}
-	InterceptedKernelBaseLoaderCallReturn(ReEntrant);
 
 	return ModuleHandle;
 }

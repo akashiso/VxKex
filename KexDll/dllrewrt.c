@@ -48,9 +48,9 @@ NTSTATUS KexAddDllRewriteEntry(
 	IN	PCUNICODE_STRING	DllName,
 	IN	PCUNICODE_STRING	RewrittenDllName)
 {
-	ASSUME (DllRewriteStringMapper != NULL);
-	ASSUME (VALID_UNICODE_STRING(DllName));
-	ASSUME (VALID_UNICODE_STRING(RewrittenDllName));
+	ASSUME(DllRewriteStringMapper != NULL);
+	ASSUME(VALID_UNICODE_STRING(DllName));
+	ASSUME(VALID_UNICODE_STRING(RewrittenDllName));
 
 	return KexRtlInsertEntryStringMapper(
 		DllRewriteStringMapper,
@@ -61,8 +61,8 @@ NTSTATUS KexAddDllRewriteEntry(
 NTSTATUS KexRemoveDllRewriteEntry(
 	IN	PCUNICODE_STRING	DllName)
 {
-	ASSUME (DllRewriteStringMapper != NULL);
-	ASSUME (VALID_UNICODE_STRING(DllName));
+	ASSUME(DllRewriteStringMapper != NULL);
+	ASSUME(VALID_UNICODE_STRING(DllName));
 
 	return KexRtlRemoveEntryStringMapper(
 		DllRewriteStringMapper,
@@ -78,16 +78,32 @@ NTSTATUS KexInitializeDllRewrite(
 {
 	NTSTATUS Status;
 	ULONG Index;
-	WCHAR IEPath[MAX_PATH] = L"X:\\Program Files\\Internet Explorer\\iexplore.exe";
-	WCHAR IEPath_x86[MAX_PATH] = L"X:\\Program Files (x86)\\Internet Explorer\\iexplore.exe";
-	BOOL IsIE;
+	BOOL IsIE = FALSE;
+	UNICODE_STRING ProgramFilesName, IEPath;
+	SIZE_T ProgramFilesPathLength = 0;
 
-	IEPath[0] = KexData->WinDir.Buffer[0];
-	IEPath_x86[0] = KexData->WinDir.Buffer[0];
-	IsIE = StringEqualI(NtCurrentPeb()->ProcessParameters->ImagePathName.Buffer, IEPath) || StringEqualI(NtCurrentPeb()->ProcessParameters->ImagePathName.Buffer, IEPath_x86);
+	RtlInitUnicodeString(&ProgramFilesName, L"ProgramFiles");
+
+	Status = RtlQueryEnvironmentVariable(NULL, ProgramFilesName.Buffer, ProgramFilesName.Length / sizeof(WCHAR), NULL, 0, &ProgramFilesPathLength);
+	ASSERT(Status == STATUS_BUFFER_TOO_SMALL || Status == STATUS_VARIABLE_NOT_FOUND);
+
+	if (ProgramFilesPathLength) {
+		IEPath.Length = 0;
+		IEPath.MaximumLength = (USHORT)(ProgramFilesPathLength + 31) * sizeof(WCHAR);
+		IEPath.Buffer = StackAlloc(WCHAR, KexRtlUnicodeStringBufferCch(&IEPath));
+
+		Status = RtlQueryEnvironmentVariable_U(NULL, &ProgramFilesName, &IEPath);
+		ASSERT(NT_SUCCESS(Status));
+
+		Status = RtlAppendUnicodeToString(&IEPath, L"\\Internet Explorer\\iexplore.exe");
+		ASSERT(NT_SUCCESS(Status));
+
+		IsIE = RtlEqualUnicodeString(&NtCurrentPeb()->ProcessParameters->ImagePathName, &IEPath, TRUE);
+	}
+
 	if (IsIE) KexLogInformationEvent(L"This is an IE process, kernel32 will not be redirected, or this process might crash.");
 
-	ASSERT (DllRewriteStringMapper == NULL);
+	ASSERT(DllRewriteStringMapper == NULL);
 
 	//
 	// Create the DLL rewrite string mapper.
@@ -97,28 +113,30 @@ NTSTATUS KexInitializeDllRewrite(
 		&DllRewriteStringMapper,
 		KEX_RTL_STRING_MAPPER_CASE_INSENSITIVE_KEYS);
 
-	ASSERT (NT_SUCCESS(Status));
+	ASSERT(NT_SUCCESS(Status));
 
 	if (!NT_SUCCESS(Status)) {
 		return Status;
 	}
 
-	ASSERT (DllRewriteStringMapper != NULL);
+	ASSERT(DllRewriteStringMapper != NULL);
 
 	//
 	// Populate the DLL rewrite string mapper.
 	//
 
-	ForEachArrayItem (DllRedirects, Index) {
-		ASSERT (VALID_UNICODE_STRING(&DllRedirects[Index][0]));
-		ASSERT (VALID_UNICODE_STRING(&DllRedirects[Index][1]));
+	ForEachArrayItem(DllRedirects, Index)
+	{
+		ASSERT(VALID_UNICODE_STRING(&DllRedirects[Index][0]));
+		ASSERT(VALID_UNICODE_STRING(&DllRedirects[Index][1]));
 
-		unless (IsIE && DllRedirects[Index][0].Buffer == L"kernel32") {
+		unless(IsIE && DllRedirects[Index][0].Buffer == L"kernel32")
+		{
 			Status = KexAddDllRewriteEntry(
 				&DllRedirects[Index][0],
 				&DllRedirects[Index][1]);
 
-			ASSERT (NT_SUCCESS(Status));
+			ASSERT(NT_SUCCESS(Status));
 
 			if (!NT_SUCCESS(Status)) return Status;
 		}
@@ -127,21 +145,22 @@ NTSTATUS KexInitializeDllRewrite(
 	//
 	// Add the Kex32 or Kex64 directory to the default loader search path.
 	//
-	
+
 	Status = KexpAddKex3264ToDllPath();
-	ASSERT (NT_SUCCESS(Status));
+	ASSERT(NT_SUCCESS(Status));
 
 	if (!NT_SUCCESS(Status)) {
 		//
 		// This can happen if, for example, the user chooses to install VxKex into a
 		// directory with a long path name.
 		//
-		
+
 		KexLogErrorEvent(
 			L"Failed to append Kex32/64 to the DLL search path.\r\n\r\n"
 			L"NTSTATUS error code: %s",
 			KexRtlNtStatusToString(Status));
-	} else {
+	}
+	else {
 		KexLogInformationEvent(
 			L"Successfully initialized DLL rewrite subsystem.\r\n\r\n"
 			L"The new default DLL search path is:\r\n\r\n"
@@ -171,9 +190,9 @@ STATIC NTSTATUS KexpLookupDllRewriteEntry(
 	UNICODE_STRING ExtPrefix;
 	USHORT MaximumRewrittenLength;
 
-	ASSERT (DllRewriteStringMapper != NULL);
-	ASSERT (VALID_UNICODE_STRING(DllName));
-	ASSERT (RewrittenDllName != NULL);
+	ASSERT(DllRewriteStringMapper != NULL);
+	ASSERT(VALID_UNICODE_STRING(DllName));
+	ASSERT(RewrittenDllName != NULL);
 
 	CleanDllName = *DllName;
 
@@ -217,7 +236,7 @@ STATIC NTSTATUS KexpLookupDllRewriteEntry(
 		&CleanDllName,
 		RewrittenDllName);
 
-	ASSERT (NT_SUCCESS(Status) || Status == STATUS_STRING_MAPPER_ENTRY_NOT_FOUND);
+	ASSERT(NT_SUCCESS(Status) || Status == STATUS_STRING_MAPPER_ENTRY_NOT_FOUND);
 
 	if (!NT_SUCCESS(Status)) {
 		return Status;
@@ -229,8 +248,8 @@ STATIC NTSTATUS KexpLookupDllRewriteEntry(
 	// a mistake with the DLL rewrite table.
 	//
 
-	ASSERT (RewrittenDllName->Length <= MaximumRewrittenLength);
-	ASSERT (VALID_UNICODE_STRING(RewrittenDllName));
+	ASSERT(RewrittenDllName->Length <= MaximumRewrittenLength);
+	ASSERT(VALID_UNICODE_STRING(RewrittenDllName));
 
 	return STATUS_SUCCESS;
 }
@@ -253,18 +272,18 @@ STATIC NTSTATUS KexpRewriteImportTableDllNameInPlace(
 
 	HaveModifiedPageProtection = FALSE;
 
-	ASSERT (AnsiDllName != NULL);
-	ASSERT (AnsiDllName->Length != 0);
-	ASSERT (AnsiDllName->MaximumLength >= AnsiDllName->Length);
-	ASSERT (AnsiDllName->Buffer != NULL);
+	ASSERT(AnsiDllName != NULL);
+	ASSERT(AnsiDllName->Length != 0);
+	ASSERT(AnsiDllName->MaximumLength >= AnsiDllName->Length);
+	ASSERT(AnsiDllName->Buffer != NULL);
 
 	//
 	// This Unicode DLL name gets allocated from the heap.
 	// We have to remember to free it.
 	//
-	
+
 	Status = RtlAnsiStringToUnicodeString(&DllName, AnsiDllName, TRUE);
-	ASSERT (NT_SUCCESS(Status));
+	ASSERT(NT_SUCCESS(Status));
 
 	if (!NT_SUCCESS(Status)) {
 		return Status;
@@ -280,7 +299,7 @@ STATIC NTSTATUS KexpRewriteImportTableDllNameInPlace(
 		&DllName,
 		&RewrittenDllName);
 
-	ASSERT (NT_SUCCESS(Status) || Status == STATUS_STRING_MAPPER_ENTRY_NOT_FOUND);
+	ASSERT(NT_SUCCESS(Status) || Status == STATUS_STRING_MAPPER_ENTRY_NOT_FOUND);
 
 	if (!NT_SUCCESS(Status)) {
 		goto Exit;
@@ -302,9 +321,10 @@ Retry:
 			&RewrittenDllName,
 			FALSE);
 
-		ASSERT (NT_SUCCESS(Status));
+		ASSERT(NT_SUCCESS(Status));
 
-	} except (GetExceptionCode() == STATUS_ACCESS_VIOLATION) {
+	} except(GetExceptionCode() == STATUS_ACCESS_VIOLATION)
+	{
 		Status = GetExceptionCode();
 
 		if (HaveModifiedPageProtection) {
@@ -313,7 +333,7 @@ Retry:
 			// loop if NtProtectVirtualMemory somehow doesn't work.
 			//
 
-			ASSERT (FALSE);
+			ASSERT(FALSE);
 
 			KexLogErrorEvent(
 				L"Failed to rewrite DLL import (%wZ -> %wZ)\r\n\r\n"
@@ -340,7 +360,7 @@ Retry:
 			PAGE_READWRITE,
 			&OldProtect);
 
-		ASSERT (NT_SUCCESS(Status));
+		ASSERT(NT_SUCCESS(Status));
 
 		if (!NT_SUCCESS(Status)) {
 			KexLogErrorEvent(
@@ -366,7 +386,7 @@ Retry:
 			OldProtect,
 			&OldProtect);
 
-		ASSERT (NT_SUCCESS(Status));
+		ASSERT(NT_SUCCESS(Status));
 	}
 
 Exit:
@@ -378,107 +398,97 @@ Exit:
 	return Status;
 }
 
+
 //
-// Determine whether the imports of a particular DLL (identified by name and
-// path) should be rewritten.
+// Returns TRUE if a given DLL is a part of Windows.
+// Items in %SystemRoot% are considered Windows DLLs unless they are specifically
+// exempted.
 //
-// Returns a pointer to the string mapper object which is to be used for
-// rewriting the imports of the specified DLL. If this function returns NULL,
-// it means the imports of the specified DLL must not be rewritten.
-//
-BOOLEAN KexShouldRewriteImportsOfDll(
-	IN	PCUNICODE_STRING	FullDllName)
+KEXAPI BOOLEAN NTAPI KexIsWindowsDll(
+	IN	PCUNICODE_STRING	FullDllName,
+	IN	PCUNICODE_STRING	BaseDllName)
 {
-	NTSTATUS Status;
-	UNICODE_STRING BaseDllName;
-
-	//
-	// Find the file name of the DLL.
-	//
-
-	Status = KexRtlPathFindFileName(FullDllName, &BaseDllName);
-	ASSERT (NT_SUCCESS(Status));
-
-	if (!NT_SUCCESS(Status)) {
-		return FALSE;
-	}
-
 	if (RtlPrefixUnicodeString(&KexData->WinDir, FullDllName, TRUE)) {
-		UNICODE_STRING Kernel;
 		UNICODE_STRING Msvcp140;
+		UNICODE_STRING SlashTemp;
+		UNICODE_STRING DllNameAfterWinDir;
 
 		//
 		// The DLL is in the Windows directory.
 		//
 
-		if (KexData->IfeoParameters.WinVerSpoof > WinVerSpoofWin7) {
-			UNICODE_STRING Iertutil;
+		DllNameAfterWinDir = *FullDllName;
+		KexRtlAdvanceUnicodeString(&DllNameAfterWinDir, KexData->WinDir.Length);
+		RtlInitConstantUnicodeString(&SlashTemp, L"\\Temp");
 
-			RtlInitConstantUnicodeString(&Iertutil, L"iertutil.dll");
-
-			if (RtlEqualUnicodeString(&BaseDllName, &Iertutil, TRUE)) {
-				//
-				// iertutil.dll checks versions and can shit itself if the
-				// version number is too high. So we need to rewrite its
-				// imports so our KXBASE version functions get applied.
-				//
-
-				return TRUE;
-			}
-		}
-
-		RtlInitConstantUnicodeString(&Kernel, L"kernel");
-
-		if (RtlPrefixUnicodeString(&Kernel, &BaseDllName, TRUE)) {
+		if (RtlPrefixUnicodeString(&SlashTemp, &DllNameAfterWinDir, TRUE)) {
 			//
-			// Rewrite the imports of kernelbase and kernel32. We want to do this
-			// so that certain functions such as LoadLibrary and CreateFileMapping
-			// end up going through KxNt (LdrLoadDll/NtCreateSection).
+			// DLL path starts with %SystemRoot%\Temp. In this case, we won't consider
+			// it a Windows module.
+			//
+			// Some installers, such as the newest versions of the Microsoft C++ v14
+			// Redistributable, copy themselves to %SystemRoot%\Temp and then run from
+			// there and check the Windows version.
+			//
+			// We don't want such installers to be considered Windows components.
 			//
 
-			return TRUE;
+			return FALSE;
 		}
 
 		RtlInitConstantUnicodeString(&Msvcp140, L"msvcp140");
 
-		if (RtlPrefixUnicodeString(&Msvcp140, &BaseDllName, TRUE))
-		{
-			// New versions of the Microsoft Visual C++ v14 Redistributable
+		if (RtlPrefixUnicodeString(&Msvcp140, BaseDllName, TRUE)) {
+			//
+			// New versions of the Microsoft Visual C++ 2015-2022 runtime
 			// are no longer compatible with Windows 7. These DLLs are installed
 			// into system32, so we need to add such an exception here.
+			//
 
-			return TRUE;
-		}
-
-		//
-		// Otherwise, do not rewrite imports of Windows DLLs.
-		//
-
-		return FALSE;
-	}
-
-	//
-	// If this DLL is a part of VxKex, do not rewrite its imports.
-	// Note: Only the DLLs which start with "Kx" are considered part of VxKex.
-	// Other DLLs within Kex32/Kex64 are just prebuilt DLLs from later versions
-	// of Windows.
-	//
-
-	if (RtlPrefixUnicodeString(&KexData->KexDir, FullDllName, TRUE)) {
-
-		if (KexRtlUnicodeStringCch(&BaseDllName) >= 2 &&
-			ToUpper(BaseDllName.Buffer[0]) == 'K' &&
-			ToUpper(BaseDllName.Buffer[1]) == 'X') {
-
-			// This is a VxKex API extension DLL.
 			return FALSE;
 		}
 
-		// Prebuilt DLL. Rewrite it and don't perform any further checks.
+		//
+		// Otherwise, it's a Windows DLL.
+		//
+
 		return TRUE;
 	}
 
-	unless (KexData->IfeoParameters.DisableAppSpecific) {
+	return FALSE;
+}
+
+//
+// Returns TRUE if a given DLL is a VxKex extended DLL.
+// Items in KexDir are considered VxKex components only if their base names start
+// with "Kx" i.e. KxBase, KxUser, etc.
+//
+KEXAPI BOOLEAN NTAPI KexIsVxKexExtendedDll(
+	IN	PCUNICODE_STRING	FullDllName,
+	IN	PCUNICODE_STRING	BaseDllName)
+{
+	if (RtlPrefixUnicodeString(&KexData->KexDir, FullDllName, TRUE) &&
+		KexRtlUnicodeStringCch(BaseDllName) >= 2 &&
+		ToUpper(BaseDllName->Buffer[0]) == 'K' &&
+		ToUpper(BaseDllName->Buffer[1]) == 'X') {
+
+		// This is a VxKex API extension DLL.
+		return TRUE;
+	}
+
+	return FALSE;
+}
+
+//
+// Returns TRUE if a given DLL is exempted from DLL rewrite for compatibility
+// reasons (i.e. rewriting its imports or dynamic loads will cause problems).
+//
+KEXAPI BOOLEAN NTAPI KexIsRewriteExemptedDll(
+	IN	PCUNICODE_STRING	FullDllName,
+	IN	PCUNICODE_STRING	BaseDllName)
+{
+	unless(KexData->IfeoParameters.DisableAppSpecific)
+	{
 		UNICODE_STRING TargetDllName;
 
 		//
@@ -491,7 +501,7 @@ BOOLEAN KexShouldRewriteImportsOfDll(
 
 		RtlInitConstantUnicodeString(&TargetDllName, L"wpfgfx_");
 
-		if (RtlPrefixUnicodeString(&TargetDllName, &BaseDllName, TRUE)) {
+		if (RtlPrefixUnicodeString(&TargetDllName, BaseDllName, TRUE)) {
 			return FALSE;
 		}
 
@@ -502,19 +512,187 @@ BOOLEAN KexShouldRewriteImportsOfDll(
 
 		if (KexRtlCurrentProcessBitness() == 64) {
 			RtlInitConstantUnicodeString(&TargetDllName, L"action_x64.dll");
-		} else {
+		}
+		else {
 			RtlInitConstantUnicodeString(&TargetDllName, L"action_x86.dll");
 		}
 
-		if (RtlEqualUnicodeString(&BaseDllName, &TargetDllName, TRUE)) {
-			return FALSE;
+		if (RtlEqualUnicodeString(BaseDllName, &TargetDllName, TRUE)) {
+			return TRUE;
 		}
+
+		//
+		// APPSPECIFICHACK: Do not interfere with RTSS/MSI Afterburner. It is
+		// compatible with Win7 and rewriting imports causes the OSD to not appear.
+		//
+
+		if (KexRtlCurrentProcessBitness() == 64) {
+			RtlInitConstantUnicodeString(&TargetDllName, L"RTSSHooks64.dll");
+		}
+		else {
+			RtlInitConstantUnicodeString(&TargetDllName, L"RTSSHooks.dll");
+		}
+
+		if (RtlEqualUnicodeString(BaseDllName, &TargetDllName, TRUE)) {
+			return TRUE;
+		}
+
+		//
+		// APPSPECIFICHACK: Some third-party Steam API emulators are incompatible
+		// with import rewriting and may cause affected games to fail at startup.
+		// TODO: check that this actually fixes the problem.
+		// https://github.com/i486/VxKex/issues/48
+		// 
+		// akashiso : This actually didn't fix the problem though.
+		// Some games will fail to start up if we exempt this.
+		//
+
+		if (KexRtlCurrentProcessBitness() == 64) {
+			RtlInitConstantUnicodeString(&TargetDllName, L"steam_api64.dll");
+		}
+		else {
+			RtlInitConstantUnicodeString(&TargetDllName, L"steam_api.dll");
+		}
+
+		if (0 && RtlEqualUnicodeString(BaseDllName, &TargetDllName, TRUE)) {
+			return TRUE;
+		}
+	}
+
+	return FALSE;
+}
+
+KEXAPI BOOLEAN NTAPI KexIsRewriteForcedWindowsDll(
+	IN	PCUNICODE_STRING	FullDllName,
+	IN	PCUNICODE_STRING	BaseDllName)
+{
+	UNICODE_STRING WebIo;
+	UNICODE_STRING WinInet;
+	UNICODE_STRING SspiCli;
+
+	//
+	// If the DLL is WebIO (used by WinHTTP) or WinInet, then we will rewrite
+	// its imports so that schannel.dll and secur32.dll get caught.
+	// This is to enable support for KxSChanl and TLS 1.3.
+	//
+
+	RtlInitConstantUnicodeString(&WebIo, L"webio.dll");
+	RtlInitConstantUnicodeString(&WinInet, L"wininet.dll");
+
+	//
+	// We will rewrite SSPICLI so that we can redirect the SecurityProviders
+	// registry value to our own (see Ext_RegQueryValueExW in KxAdvapi).
+	//
+
+	RtlInitConstantUnicodeString(&SspiCli, L"sspicli.dll");
+
+	if (RtlEqualUnicodeString(BaseDllName, &WebIo, TRUE) ||
+		RtlEqualUnicodeString(BaseDllName, &WinInet, TRUE) ||
+		RtlEqualUnicodeString(BaseDllName, &SspiCli, TRUE)) {
+
+		return TRUE;
+	}
+
+	return FALSE;
+}
+
+//
+// Determine whether a particular DLL should have its static imports rewritten.
+//
+BOOLEAN KexShouldRewriteStaticImportsOfDll(
+	IN	PCUNICODE_STRING	FullDllName,
+	IN	PCUNICODE_STRING	BaseDllName)
+{
+	if (KexIsWindowsDll(FullDllName, BaseDllName)) {
+		UNICODE_STRING Kernel;
+
+		if (KexIsRewriteForcedWindowsDll(FullDllName, BaseDllName)) {
+			return TRUE;
+		}
+
+		RtlInitConstantUnicodeString(&Kernel, L"kernel");
+
+		if (RtlPrefixUnicodeString(&Kernel, BaseDllName, TRUE)) {
+			//
+			// Rewrite the imports of kernelbase and kernel32. We want to do this
+			// so that certain functions such as LoadLibrary and CreateFileMapping
+			// end up going through KxNt (LdrLoadDll/NtCreateSection).
+			//
+
+			return TRUE;
+		}
+
+		if (KexData->IfeoParameters.WinVerSpoof > WinVerSpoofWin7) {
+			UNICODE_STRING Iertutil;
+
+			RtlInitConstantUnicodeString(&Iertutil, L"iertutil.dll");
+
+			if (RtlEqualUnicodeString(BaseDllName, &Iertutil, TRUE)) {
+				//
+				// iertutil.dll checks versions and can shit itself if the
+				// version number is too high. So we need to rewrite its
+				// imports so our KXBASE version functions get applied.
+				//
+
+				return TRUE;
+			}
+		}
+
+		//
+		// Otherwise, do not rewrite the static imports of Windows DLLs.
+		//
+
+		return FALSE;
+	}
+
+	//
+	// If this DLL is a part of VxKex, do not rewrite its imports.
+	// Note: Only the DLLs which start with "Kx" are considered part of VxKex.
+	// Other DLLs within Kex32/Kex64 are just prebuilt DLLs from later versions
+	// of Windows.
+	//
+
+	if (KexIsVxKexExtendedDll(FullDllName, BaseDllName)) {
+		return FALSE;
+	}
+
+	//
+	// Check if a DLL is exempted from rewrite for compatibility reasons.
+	//
+
+	if (KexIsRewriteExemptedDll(FullDllName, BaseDllName)) {
+		return FALSE;
 	}
 
 	//
 	// If there's no other rules that apply to this DLL, then we will rewrite
 	// its imports.
 	//
+
+	return TRUE;
+}
+
+//
+// Determine whether a DLL should have its dynamic imports rewritten.
+//
+KEXAPI BOOLEAN NTAPI KexShouldRewriteDynamicImportsOfDll(
+	IN	PCUNICODE_STRING	FullDllName,
+	IN	PCUNICODE_STRING	BaseDllName)
+{
+	if (KexIsWindowsDll(FullDllName, BaseDllName)) {
+		if (KexIsRewriteForcedWindowsDll(FullDllName, BaseDllName)) {
+			return TRUE;
+		}
+
+		return FALSE;
+	}
+
+	if (KexIsWindowsDll(FullDllName, BaseDllName) ||
+		KexIsVxKexExtendedDll(FullDllName, BaseDllName) ||
+		KexIsRewriteExemptedDll(FullDllName, BaseDllName)) {
+
+		return FALSE;
+	}
 
 	return TRUE;
 }
@@ -551,8 +729,7 @@ NTSTATUS KexRewriteImageImportDirectory(
 
 	ASSERT(NT_SUCCESS(Status));
 
-	if (!NT_SUCCESS(Status))
-	{
+	if (!NT_SUCCESS(Status)) {
 		return Status;
 	}
 
@@ -560,8 +737,7 @@ NTSTATUS KexRewriteImageImportDirectory(
 	OptionalHeader = &NtHeaders->OptionalHeader;
 	ImportDirectory = &OptionalHeader->DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT];
 
-	if ((KexRtlCurrentProcessBitness() == 64) != (CoffHeader->Machine == 0x8664))
-	{
+	if ((KexRtlCurrentProcessBitness() == 64) != (CoffHeader->Machine == 0x8664)) {
 		//
 		// 32-bit dll loaded in 64-bit process or vice versa
 		// This can happen with resource-only DLLs, in which case there are no
@@ -572,8 +748,7 @@ NTSTATUS KexRewriteImageImportDirectory(
 	}
 
 	if (OptionalHeader->NumberOfRvaAndSizes < (IMAGE_DIRECTORY_ENTRY_IMPORT + 1) ||
-		ImportDirectory->VirtualAddress == 0)
-	{
+		ImportDirectory->VirtualAddress == 0) {
 		//
 		// There is no import directory in the image (e.g. resource-only DLL).
 		//
@@ -583,8 +758,7 @@ NTSTATUS KexRewriteImageImportDirectory(
 
 	ImportDescriptor = (PIMAGE_IMPORT_DESCRIPTOR)RVA_TO_VA(ImageBase, ImportDirectory->VirtualAddress);
 
-	if (ImportDescriptor->Name == 0)
-	{
+	if (ImportDescriptor->Name == 0) {
 		//
 		// There shouldn't be an import directory if it has no entries.
 		//
@@ -603,8 +777,7 @@ NTSTATUS KexRewriteImageImportDirectory(
 
 	ASSERT(NT_SUCCESS(Status));
 
-	if (!NT_SUCCESS(Status))
-	{
+	if (!NT_SUCCESS(Status)) {
 		return Status;
 	}
 
@@ -617,8 +790,7 @@ NTSTATUS KexRewriteImageImportDirectory(
 
 	ASSERT(NT_SUCCESS(Status));
 
-	if (!NT_SUCCESS(Status))
-	{
+	if (!NT_SUCCESS(Status)) {
 		return Status;
 	}
 
@@ -628,8 +800,7 @@ NTSTATUS KexRewriteImageImportDirectory(
 
 	RtlInitConstantUnicodeString(&Kernel32, L"kernel32.dll");
 
-	if (RtlEqualUnicodeString(BaseImageName, &Kernel32, TRUE))
-	{
+	if (RtlEqualUnicodeString(BaseImageName, &Kernel32, TRUE)) {
 		PSTR NtdllImport;
 
 		// On Windows 7, NTDLL is always the 2nd import of kernel32.
@@ -645,8 +816,7 @@ NTSTATUS KexRewriteImageImportDirectory(
 	// Walk through imports and rewrite each one if necessary.
 	//
 
-	do
-	{
+	do {
 		PSTR DllNameBuffer;
 		ANSI_STRING ImportedDllNameAnsi;
 
@@ -658,8 +828,7 @@ NTSTATUS KexRewriteImageImportDirectory(
 
 		ASSERT(NT_SUCCESS(Status) || Status == STATUS_STRING_MAPPER_ENTRY_NOT_FOUND);
 
-		if (NT_SUCCESS(Status))
-		{
+		if (NT_SUCCESS(Status)) {
 			AtLeastOneImportWasRewritten = TRUE;
 		}
 	} while ((++ImportDescriptor)->Name != 0);
@@ -676,8 +845,7 @@ SkipNormalImportRewrite:
 
 	ASSERT(NT_SUCCESS(Status));
 
-	if (AtLeastOneImportWasRewritten)
-	{
+	if (AtLeastOneImportWasRewritten) {
 		PIMAGE_DATA_DIRECTORY BoundImportDirectory;
 		PVOID DataDirectoryPtr;
 		SIZE_T DataDirectorySize;
@@ -705,8 +873,7 @@ SkipNormalImportRewrite:
 
 		ASSERT(NT_SUCCESS(Status));
 
-		if (!NT_SUCCESS(Status))
-		{
+		if (!NT_SUCCESS(Status)) {
 			return Status;
 		}
 
@@ -754,18 +921,18 @@ NTSTATUS KexRewriteDllPath(
 	// Validate parameters.
 	//
 
-	ASSERT (DllRewriteStringMapper != NULL);
+	ASSERT(DllRewriteStringMapper != NULL);
 
-	ASSERT (VALID_UNICODE_STRING(DllPath));
-	ASSERT (DllPath->Length != 0);
-	ASSERT (DllPath->Buffer != NULL);
+	ASSERT(VALID_UNICODE_STRING(DllPath));
+	ASSERT(DllPath->Length != 0);
+	ASSERT(DllPath->Buffer != NULL);
 
-	ASSERT (VALID_UNICODE_STRING(RewrittenDllNameOut));
-	ASSERT (RewrittenDllNameOut->MaximumLength != 0);
-	ASSERT (RewrittenDllNameOut->Buffer != NULL);
+	ASSERT(VALID_UNICODE_STRING(RewrittenDllNameOut));
+	ASSERT(RewrittenDllNameOut->MaximumLength != 0);
+	ASSERT(RewrittenDllNameOut->Buffer != NULL);
 
-	ASSERT (DllPath != RewrittenDllNameOut);
-	ASSERT (RewrittenDllNameOut->MaximumLength >= DllPath->Length);
+	ASSERT(DllPath != RewrittenDllNameOut);
+	ASSERT(RewrittenDllNameOut->MaximumLength >= DllPath->Length);
 
 	//
 	// Set the output length to zero. We will append to it later.
@@ -782,7 +949,7 @@ NTSTATUS KexRewriteDllPath(
 		DllPath,
 		&DllFileName);
 
-	ASSERT (NT_SUCCESS(Status));
+	ASSERT(NT_SUCCESS(Status));
 
 	if (!NT_SUCCESS(Status)) {
 		return Status;
@@ -813,11 +980,11 @@ NTSTATUS KexRewriteDllPath(
 		&DllFileName,
 		&RewrittenDllName);
 
-	ASSERT (NT_SUCCESS(Status) || Status == STATUS_STRING_MAPPER_ENTRY_NOT_FOUND);
+	ASSERT(NT_SUCCESS(Status) || Status == STATUS_STRING_MAPPER_ENTRY_NOT_FOUND);
 
 	if (!NT_SUCCESS(Status)) {
 		return Status;
-	} 
+	}
 
 	KexLogDetailEvent(
 		L"DLL name or path was successfully rewritten: %wZ -> %wZ\r\n\r\n"
@@ -828,6 +995,6 @@ NTSTATUS KexRewriteDllPath(
 
 	RtlCopyUnicodeString(RewrittenDllNameOut, &RewrittenDllName);
 
-	ASSERT (VALID_UNICODE_STRING(RewrittenDllNameOut));
+	ASSERT(VALID_UNICODE_STRING(RewrittenDllNameOut));
 	return Status;
 }

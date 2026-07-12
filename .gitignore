@@ -363,3 +363,4 @@ FodyWeavers.xsd
 
 00-Import Libraries/Kex*.*
 Kex*.exe
+backup/*
