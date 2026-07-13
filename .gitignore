@@ -364,3 +364,5 @@ FodyWeavers.xsd
 00-Import Libraries/Kex*.*
 Kex*.exe
 backup/*
+!02-Prebuilt DLLs/x64
+!02-Prebuilt DLLs/x86

@@ -27,7 +27,7 @@ copy ..\..\%DBGREL%\KexSetup.exe Archive\ >nul
 copy "..\..\00-Documentation\Application Compatibility List.docx" Archive\Core\ >nul
 copy "..\..\00-Documentation\Changelog.txt" Archive\Core\ >nul
 
-copy "..\..\02-Prebuilt Data\icudtl.dat" Archive\Data\ >nul
+copy "..\..\02-Prebuilt Data\*" Archive\Data\ >nul
 
 REM
 REM 32-bit Core
