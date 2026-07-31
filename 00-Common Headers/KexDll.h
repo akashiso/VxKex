@@ -123,6 +123,8 @@
 #define KEXDATA_FLAG_FIREFOX				128	// This is a Firefox-based application (Firefox, Thunderbird, etc.)
 #define KEXDATA_FLAG_DOTNET					256	// Indicates a .NET application.
 #define KEXDATA_FLAG_QT6					512 // Indicates a Qt6 application.
+#define KEXDATA_FLAG_MSI_SERVICE			1024	// Indicates MSIEXEC /V (Windows Installer service)
+#define KEXDATA_FLAG_CONDRV_EMULATION		2048	// ConDrv emulation is enabled (see ntcondrv.c)
 
 #define KEX_STRONGSPOOF_SHAREDUSERDATA	1
 #define KEX_STRONGSPOOF_REGISTRY		2
@@ -374,9 +376,41 @@ typedef struct _KEX_PROCESS_DATA {
 	HANDLE					BaseNamedObjects;			// object directory handle
 	HANDLE					UntrustedNamedObjects;
 	HANDLE					KsecDD;						// handle to \Device\KsecDD
+	HANDLE					GlobalKeyedEvent;
 } TYPEDEF_TYPE_NAME(KEX_PROCESS_DATA);
 
 typedef PVOID TYPEDEF_TYPE_NAME(DLL_DIRECTORY_COOKIE);
+
+//
+// A KEX_TEB_EXTENSION structure is located directly after the TEB, in free memory.
+// The structure size is quite limited. On 32-bit, the structure is limited to a
+// size of only 28 bytes. On 64-bit we have a lot more space (2024 bytes).
+// The structure is always zero-initialized by the kernel upon thread start.
+//
+// Use the inline function KexCurrentTebExtension() to obtain a pointer to the
+// KEX_TEB_EXTENSION of the current thread.
+//
+
+typedef struct _KEX_TEB_EXTENSION* PKEX_TEB_EXTENSION;
+
+typedef struct _KEX_TEB_EXTENSION
+{
+	// This member is used for supporting NtWaitForAlertByThreadId and
+	// NtAlertThreadByThreadId (ntalrtid.c).
+	VOLATILE LONG				AlertByThreadIdState;
+
+	union {
+		struct {
+			BOOLEAN				KexLdrShouldRewriteDll : 1;
+		};
+
+		UCHAR					BitField;
+	};
+} TYPEDEF_TYPE_NAME(KEX_TEB_EXTENSION);
+
+// Make sure no overflow of the TEB pages occurs.
+C_ASSERT(sizeof(TEB) + sizeof(KEX_TEB_EXTENSION) <=
+		 ((sizeof(TEB) + (PAGE_SIZE - 1)) & ~((SIZE_T)(PAGE_SIZE - 1))));
 
 #pragma endregion
 
@@ -554,6 +588,10 @@ KEXAPI NTSTATUS NTAPI KexRtlWow64GetProcessMachines(
 	OUT	PUSHORT	ProcessMachine,
 	OUT	PUSHORT	NativeMachine OPTIONAL);
 
+KEXAPI NTSTATUS NTAPI KexRtlWow64IsWowGuestMachineSupported(
+	IN	USHORT		WowGuestMachine,
+	OUT	PBOOLEAN	MachineIsSupported);
+
 KEXAPI VOID NTAPI KexRtlSetBit(
 	IN	PRTL_BITMAP	BitmapHeader,
 	IN	ULONG		BitNumber);
@@ -580,6 +618,9 @@ KEXAPI NTSTATUS NTAPI KexRtlEncryptMemory(
 	IN OUT	PVOID	Memory,
 	IN		ULONG	MemoryCb,
 	IN		ULONG	Flags);
+
+KEXAPI LONGLONG NTAPI KexRtlGetSystemTimePrecise(
+	VOID);
 
 #ifdef KEX_ARCH_X64
 #  define KexRtlCurrentProcessBitness() (64)
@@ -1084,5 +1125,66 @@ DECLARE_SYSCALL(NtQueryInformationProcess,
 DECLARE_SYSCALL(NtAssignProcessToJobObject,
 	IN	HANDLE				JobHandle,
 	IN	HANDLE				ProcessHandle);
+
+//
+// This function was added to the RTL in Win10.
+// Added here as an inline function for use by KxCfgHlp, and it is also
+// exported from KexDll and KxNt.
+// The KexRtl* variant is the inline function, and the Rtl* variant would
+// be imported from KexDll.
+// Based on Win10 NTDLL decompilation.
+//
+
+INLINE BOOLEAN KexRtlIsZeroMemory(
+	IN	PCVOID	Buffer,
+	IN	SIZE_T	BufferCb)
+{
+	// Align the input buffer to a multiple of the pointer size.
+	while (BufferCb > 0 && ((ULONG_PTR)Buffer & (sizeof(PVOID) - 1)) != 0) {
+		if (*(PBYTE)Buffer != 0) {
+			return FALSE;
+		}
+
+		Buffer = (PBYTE)Buffer + 1;
+		--BufferCb;
+	}
+
+	// Process the buffer in pointer-sized pieces
+	while (BufferCb >= sizeof(PVOID)) {
+		if (*(PULONG_PTR)Buffer != 0) {
+			return FALSE;
+		}
+
+		Buffer = (PULONG_PTR)Buffer + 1;
+		BufferCb -= sizeof(PVOID);
+	}
+
+	if (BufferCb == 0) {
+		return TRUE;
+	}
+
+	// Handle remaining bytes at the end.
+	do {
+		if (*(PBYTE)Buffer != 0) {
+			return FALSE;
+		}
+
+		Buffer = (PBYTE)Buffer + 1;
+		--BufferCb;
+	} while (BufferCb > 0);
+
+	return TRUE;
+}
+
+KEXAPI BOOLEAN NTAPI RtlIsZeroMemory(
+	IN	PCVOID	Buffer,
+	IN	SIZE_T	BufferCb);
+
+FORCEINLINE PKEX_TEB_EXTENSION KexCurrentTebExtension(
+	VOID)
+{
+	return (PKEX_TEB_EXTENSION)(&NtCurrentTeb()[1]);
+}
+
 
 #pragma endregion

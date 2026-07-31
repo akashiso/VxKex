@@ -12,10 +12,19 @@ KXUIAAPI HRESULT WINAPI UiaRaiseNotificationEvent(
 	return E_NOTIMPL;
 }
 
-// KXUIAAPI HRESULT WINAPI UiaDisconnectProvider(IN IRawElementProviderSimple  *pProvider) {
-KXUIAAPI HRESULT WINAPI UiaDisconnectProvider(IN IUnknown* pProvider)
+KXUIAAPI HRESULT WINAPI UiaDisconnectProvider(
+	IN		IUnknown* Provider)
 {
-	return 0;
+	return E_NOTIMPL;
+}
+
+//
+// Some Unity games require this.
+//
+KXUIAAPI HRESULT WINAPI UiaDisconnectAllProviders(
+	VOID)
+{
+	return E_NOTIMPL;
 }
 
 KXUIAAPI HRESULT WINAPI UiaRaiseChangesEvent(

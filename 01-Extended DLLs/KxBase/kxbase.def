@@ -240,6 +240,7 @@ EXPORTS
 	RegEnumKeyExW						= RegEnumKeyExW_Ext
 	RegGetValueA						= Ext_RegGetValueA
 	RegGetValueW						= Ext_RegGetValueW
+	RegQueryValueExW					= Ext_RegQueryValueExW
 	GetEnvironmentVariableW				= Ext_GetEnvironmentVariableW
 	GetEnvironmentVariable				= Ext_GetEnvironmentVariableW
 

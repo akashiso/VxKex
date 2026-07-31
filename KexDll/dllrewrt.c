@@ -69,15 +69,10 @@ NTSTATUS KexRemoveDllRewriteEntry(
 		DllName);
 }
 
-//
-// Initialize the DLL rewrite subsystem.
-//
-
-NTSTATUS KexInitializeDllRewrite(
+BOOL IsCurrentProcessInternetExplorer(
 	VOID)
 {
 	NTSTATUS Status;
-	ULONG Index;
 	BOOL IsIE = FALSE;
 	UNICODE_STRING ProgramFilesName, IEPath;
 	SIZE_T ProgramFilesPathLength = 0;
@@ -100,6 +95,19 @@ NTSTATUS KexInitializeDllRewrite(
 
 		IsIE = RtlEqualUnicodeString(&NtCurrentPeb()->ProcessParameters->ImagePathName, &IEPath, TRUE);
 	}
+	return IsIE;
+}
+
+//
+// Initialize the DLL rewrite subsystem.
+//
+
+NTSTATUS KexInitializeDllRewrite(
+	VOID)
+{
+	NTSTATUS Status;
+	ULONG Index;
+	BOOL IsIE = IsCurrentProcessInternetExplorer();
 
 	if (IsIE) KexLogInformationEvent(L"This is an IE process, kernel32 will not be redirected, or this process might crash.");
 
@@ -487,6 +495,22 @@ KEXAPI BOOLEAN NTAPI KexIsRewriteExemptedDll(
 	IN	PCUNICODE_STRING	FullDllName,
 	IN	PCUNICODE_STRING	BaseDllName)
 {
+	STATIC CONST UNICODE_STRING MacTypeDlls[] = {
+#ifdef _M_X64
+				RTL_CONSTANT_STRING(L"MacType64.dll"),
+				RTL_CONSTANT_STRING(L"MacType64.Core.dll"),
+#else
+				RTL_CONSTANT_STRING(L"MacType.dll"),
+				RTL_CONSTANT_STRING(L"MacType.Core.dll"),
+#endif
+	};
+
+	ULONG Index;
+
+	for (Index = 0; Index < ARRAYSIZE(MacTypeDlls); ++Index) {
+		if (RtlEqualUnicodeString(BaseDllName, &MacTypeDlls[Index], TRUE)) return TRUE;
+	}
+
 	unless(KexData->IfeoParameters.DisableAppSpecific)
 	{
 		UNICODE_STRING TargetDllName;
@@ -795,7 +819,8 @@ NTSTATUS KexRewriteImageImportDirectory(
 	}
 
 	//
-	// Check if this is kernel32.
+	// Check if this is kernel32. If so, only rewrite its NTDLL import
+	// (there is also a kernelbase import which we do not want to rewrite).
 	//
 
 	RtlInitConstantUnicodeString(&Kernel32, L"kernel32.dll");

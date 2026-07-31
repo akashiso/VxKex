@@ -32,6 +32,10 @@
 #include <KexTypes.h>
 #include <WinIoCtl.h>
 #include <WinNT.h>
+#include <inaddr.h>
+#include <in6addr.h>
+GEN_STD_TYPEDEFS(IN_ADDR);
+GEN_STD_TYPEDEFS(IN6_ADDR);
 #undef WIN32_NO_STATUS
 #include <ntstatus.h>
 #define WIN32_NO_STATUS
@@ -85,6 +89,8 @@
 #define OBJ_KERNEL_HANDLE       0x00000200L
 #define OBJ_FORCE_ACCESS_CHECK  0x00000400L
 #define OBJ_VALID_ATTRIBUTES    0x000007F2L
+
+#define OBJ_HANDLE_TAGBITS		0x00000003UL
 
 #define FILE_DIRECTORY_FILE                     0x00000001
 #define FILE_WRITE_THROUGH                      0x00000002
@@ -500,6 +506,7 @@ typedef enum _MEM_EXTENDED_PARAMETER_TYPE {
 	MemExtendedParameterPartitionHandle,
 	MemExtendedParameterUserPhysicalHandle,
 	MemExtendedParameterAttributeFlags,
+	MemExtendedParameterImageMachine,
 	MemExtendedParameterMax
 } TYPEDEF_TYPE_NAME(MEM_EXTENDED_PARAMETER_TYPE);
 
@@ -561,6 +568,10 @@ typedef struct _MEM_ADDRESS_REQUIREMENTS {
 #define DIRECTORY_CREATE_SUBDIRECTORY	(0x0008)
 
 #define DIRECTORY_ALL_ACCESS (STANDARD_RIGHTS_REQUIRED | 0xF)
+
+#define KEYEDEVENT_WAIT 0x0001
+#define KEYEDEVENT_WAKE 0x0002
+#define KEYEDEVENT_ALL_ACCESS (STANDARD_RIGHTS_REQUIRED | KEYEDEVENT_WAIT | KEYEDEVENT_WAKE)
 
 #define DLL_CHARACTERISTIC_LOAD_AS_DATA				0x000002
 #define DLL_CHARACTERISTIC_IGNORE_CODE_AUTHZ_LEVEL	0x001000
@@ -641,6 +652,14 @@ typedef struct _MEM_ADDRESS_REQUIREMENTS {
 #define DOMAIN_GROUP_RID_PROTECTED_USERS		(0x0000020DL)
 #define DOMAIN_GROUP_RID_KEY_ADMINS				(0x0000020EL)
 #define DOMAIN_GROUP_RID_ENTERPRISE_KEY_ADMINS	(0x0000020FL)
+
+// for use with (Kex)RtlGetDeviceFamilyInfoEnum
+#define DEVICEFAMILYINFOENUM_DESKTOP				0x03
+#define DEVICEFAMILYDEVICEFORM_TABLET				0x02
+#define DEVICEFAMILYDEVICEFORM_DESKTOP				0x03
+#define DEVICEFAMILYDEVICEFORM_NOTEBOOK				0x04
+
+#define IMAGE_FILE_MACHINE_TARGET_HOST				0x0001
 
 #pragma endregion
 
@@ -2239,6 +2258,42 @@ typedef enum _FILE_INFORMATION_CLASS {
 	FileNumaNodeInformation,                        // 53
 	FileStandardLinkInformation,                    // 54
 	FileRemoteProtocolInformation,                  // 55
+
+
+	// Windows 8 and above
+	FileRenameInformationBypassAccessCheck,			// 56
+	FileLinkInformationBypassAccessCheck,			// 57
+	FileVolumeNameInformation,						// 58
+	FileIdInformation,								// 59
+	FileIdExtdDirectoryInformation,					// 60
+
+	// Windows 8.1 and above
+	FileReplaceCompletionInformation,				// 61
+	FileHardLinkFullIdInformation,					// 62
+	FileIdExtdBothDirectoryInformation,				// 63
+
+	// Windows 10 and above
+	FileDispositionInformationEx,					// 64
+	FileRenameInformationEx,						// 65
+	FileRenameInformationExBypassAccessCheck,		// 66
+	FileDesiredStorageClassInformation,				// 67
+	FileStatInformation,							// 68
+	FileMemoryPartitionInformation,					// 69
+	FileStatLxInformation,							// 70
+	FileCaseSensitiveInformation,					// 71
+	FileLinkInformationEx,							// 72
+	FileLinkInformationExBypassAccessCheck,			// 73
+	FileStorageReserveIdInformation,				// 74
+	FileCaseSensitiveInformationForceAccessCheck,	// 75
+	FileKnownFolderInformation,						// 76
+	FileStatBasicInformation,						// 77
+	FileId64ExtdDirectoryInformation,				// 78
+	FileId64ExtdBothDirectoryInformation,			// 79
+	FileIdAllExtdDirectoryInformation,				// 80
+	FileIdAllExtdBothDirectoryInformation,			// 81
+	FileStreamReservationInformation,				// 82
+	FileMupProviderInfo,							// 83
+
 	FileMaximumInformation
 } TYPEDEF_TYPE_NAME(FILE_INFORMATION_CLASS);
 
@@ -2299,6 +2354,49 @@ typedef struct _FILE_FULL_EA_INFORMATION {
 	USHORT			EaValueLength;
 	CHAR			EaName[1];
 } TYPEDEF_TYPE_NAME(FILE_FULL_EA_INFORMATION);
+
+// Used with NtSetInformationFile -> FileRenameInformation(Ex)
+// https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-_file_rename_information
+typedef struct _FILE_RENAME_INFORMATION {
+	union {
+		struct {
+			BOOLEAN	ReplaceIfExistsWin10AndAbove : 1;
+			BOOLEAN	PosixSemantics : 1;
+			BOOLEAN	SuppressPinStateInheritance : 1;
+			BOOLEAN	SuppressStorageReserveInheritance : 1;
+			BOOLEAN	NoIncreaseAvailableSpace : 1;
+			BOOLEAN	NoDecreaseAvailableSpace : 1;
+			BOOLEAN	IgnoreReadonlyAttribute : 1;
+			BOOLEAN	ForceResizeTargetStorageReserve : 1;
+			BOOLEAN ForceResizeSourceStorageReserve : 1;
+		};
+
+		BOOLEAN		ReplaceIfExists;			// FileRenameInformation
+		ULONG		Flags;						// FileRenameInformationEx
+	};
+
+	HANDLE			RootDirectory;
+	ULONG			FileNameLength;
+	WCHAR			FileName[ANYSIZE_ARRAY];
+} TYPEDEF_TYPE_NAME(FILE_RENAME_INFORMATION);
+
+typedef struct _FILE_DISPOSITION_INFORMATION {
+	BOOLEAN			DeleteFile;
+} TYPEDEF_TYPE_NAME(FILE_DISPOSITION_INFORMATION);
+
+typedef struct _FILE_DISPOSITION_INFORMATION_EX {
+	union {
+		struct {
+			BOOLEAN	Delete : 1;
+			BOOLEAN	PosixSemantics : 1;
+			BOOLEAN	ForceImageSectionCheck : 1;
+			BOOLEAN	OnClose : 1;
+			BOOLEAN	IgnoreReadonlyAttribute : 1;
+		};
+
+		ULONG		Flags;
+	};
+} TYPEDEF_TYPE_NAME(FILE_DISPOSITION_INFORMATION_EX);
 
 typedef struct _SYSTEM_PROCESS_INFORMATION {
 	ULONG			NextEntryOffset;
@@ -2948,6 +3046,14 @@ typedef struct _EVENT_BASIC_INFORMATION
 	LONG EventState;
 } TYPEDEF_TYPE_NAME(EVENT_BASIC_INFORMATION);
 
+// Win10 1803+
+typedef enum
+{
+	StateLocationTypeRegistry,
+	StateLocationTypeFileSystem,
+	StateLocationTypeMaximum
+} TYPEDEF_TYPE_NAME(STATE_LOCATION_TYPE);
+
 typedef enum _FSINFOCLASS
 {
 	FileFsVolumeInformation,
@@ -3490,6 +3596,9 @@ NTSYSCALLAPI NTSTATUS NTAPI NtDelayExecution(
 	IN		BOOLEAN						Alertable,
 	IN		PLONGLONG					DelayInterval);
 
+NTSYSCALLAPI NTSTATUS NTAPI NtYieldExecution(
+	VOID);
+
 NTSYSCALLAPI NTSTATUS NTAPI NtCreateTransaction(
 	OUT		PHANDLE						TransactionHandle,
 	IN		ACCESS_MASK					DesiredAccess,
@@ -3875,6 +3984,29 @@ NTSYSCALLAPI NTSTATUS NTAPI NtAssignProcessToJobObject(
 NTSYSCALLAPI NTSTATUS NTAPI NtQueryDefaultLocale(
 	IN		BOOLEAN		UserProfile,
     OUT		PLCID		DefaultUILanguageId);
+
+NTSYSCALLAPI NTSTATUS NTAPI NtCreateKeyedEvent(
+	OUT	PHANDLE				KeyedEventHandle,
+	IN	ACCESS_MASK			DesiredAccess,
+	IN	POBJECT_ATTRIBUTES	ObjectAttributes OPTIONAL,
+	IN	ULONG				Reserved);
+
+NTSYSCALLAPI NTSTATUS NTAPI NtOpenKeyedEvent(
+	OUT	PHANDLE				KeyedEventHandle,
+	IN	ACCESS_MASK			DesiredAccess,
+	IN	POBJECT_ATTRIBUTES	ObjectAttributes);
+
+NTSYSCALLAPI NTSTATUS NTAPI NtReleaseKeyedEvent(
+	IN	HANDLE				KeyedEventHandle,
+	IN	PVOID				KeyValue,
+	IN	BOOLEAN				Alertable,
+	IN	PLARGE_INTEGER		Timeout OPTIONAL);
+
+NTSYSCALLAPI NTSTATUS NTAPI NtWaitForKeyedEvent(
+	IN	HANDLE				KeyedEventHandle,
+	IN	PVOID				KeyValue,
+	IN	BOOLEAN				Alertable,
+	IN	PLARGE_INTEGER		Timeout OPTIONAL);
 
 NTSYSCALLAPI NTSTATUS NtQueryVolumeInformationFile(
 	IN  HANDLE               FileHandle,
@@ -4546,32 +4678,101 @@ NTSYSAPI NTSTATUS NTAPI RtlCopySid(
 	OUT	PSID	DestinationSid,
 	IN	PSID	SourceSid);
 
-NTSYSAPI NTSTATUS RtlIpv4AddressToStringW(
-	IN      CONST IN_ADDR*    Address,
-	OUT     PWSTR             AddressString
-);
+NTSYSAPI PSTR NTAPI RtlIpv4AddressToStringA(
+	IN	PCIN_ADDR	Address,
+	OUT	PSTR		String);
 
-NTSYSAPI NTSTATUS RtlIpv4StringToAddressExW(
-	IN  PCWSTR  AddressString,
-	IN  BOOLEAN Strict,
-	OUT IN_ADDR* Address,
-	OUT PUSHORT Port
-);
+NTSYSAPI NTSTATUS NTAPI RtlIpv4AddressToStringExA(
+	IN		PCIN_ADDR	Address,
+	IN		USHORT		Port,
+	OUT		PSTR		AddressString,
+	IN OUT	PULONG		AddressStringLength);
 
-NTSYSAPI NTSTATUS RtlIpv6AddressToStringExW(
-	IN      CONST IN6_ADDR*   Address,
-	IN      ULONG             ScopeId,
-	IN      USHORT            Port,
-	OUT     PWSTR             AddressString,
-	IN OUT  PULONG            AddressStringLength
-);
+NTSYSAPI PWSTR NTAPI RtlIpv4AddressToStringW(
+	IN	PCIN_ADDR	Address,
+	OUT	PWSTR		String);
 
-NTSYSAPI NTSTATUS RtlIpv6StringToAddressExW(
-	IN  PCWSTR    AddressString,
-	OUT IN6_ADDR* Address,
-	OUT PULONG    ScopeId,
-	OUT PUSHORT   Port
-);
+NTSYSAPI NTSTATUS NTAPI RtlIpv4AddressToStringExW(
+	IN		PCIN_ADDR	Address,
+	IN		USHORT		Port,
+	OUT		PWSTR		AddressString,
+	IN OUT	PULONG		AddressStringLength);
+
+NTSYSAPI NTSTATUS NTAPI RtlIpv4StringToAddressA(
+	IN	PCSTR		String,
+	IN	BOOLEAN		Strict,
+	OUT	PPCSTR		Terminator,
+	OUT	PIN_ADDR	Addr);
+
+NTSYSAPI NTSTATUS NTAPI RtlIpv4StringToAddressExA(
+	IN	PCSTR		String,
+	IN	BOOLEAN		Strict,
+	OUT	PIN_ADDR	Address,
+	OUT	PUSHORT		Port);
+
+NTSYSAPI NTSTATUS NTAPI RtlIpv4StringToAddressW(
+	IN	PCWSTR		String,
+	IN	BOOLEAN		Strict,
+	OUT	PPCWSTR		Terminator,
+	OUT	PIN_ADDR	Address);
+
+NTSYSAPI NTSTATUS NTAPI RtlIpv4StringToAddressExW(
+	IN	PCWSTR		String,
+	IN	BOOLEAN		Strict,
+	OUT	PIN_ADDR	Address,
+	OUT	PUSHORT		Port);
+
+NTSYSAPI PSTR NTAPI RtlIpv6AddressToStringA(
+	IN	PCIN6_ADDR	Address,
+	OUT	PSTR		String);
+
+NTSYSAPI NTSTATUS NTAPI RtlIpv6AddressToStringExA(
+	IN		PCIN6_ADDR	Address,
+	IN		ULONG		ScopeId,
+	IN		USHORT		Port,
+	OUT		PSTR		AddressString,
+	IN OUT	PULONG		AddressStringLength);
+
+NTSYSAPI PWSTR NTAPI RtlIpv6AddressToStringW(
+	IN	PCIN6_ADDR	Address,
+	OUT	PWSTR		String);
+
+NTSYSAPI NTSTATUS NTAPI RtlIpv6AddressToStringExW(
+	IN		PCIN6_ADDR	Address,
+	IN		ULONG		ScopeId,
+	IN		USHORT		Port,
+	OUT		PWSTR		AddressString,
+	IN OUT	PULONG		AddressStringLength);
+
+NTSYSAPI NTSTATUS NTAPI RtlIpv6StringToAddressA(
+	IN	PCSTR		String,
+	OUT	PPCSTR		Terminator,
+	OUT	PIN6_ADDR	Address);
+
+NTSYSAPI NTSTATUS NTAPI RtlIpv6StringToAddressExA(
+	IN	PCSTR		String,
+	OUT	PIN6_ADDR	Address,
+	OUT	PULONG		ScopeId,
+	OUT	PUSHORT		Port);
+
+NTSYSAPI NTSTATUS NTAPI RtlIpv6StringToAddressW(
+	IN	PCWSTR		String,
+	OUT	PPCWSTR		Terminator,
+	OUT	PIN6_ADDR	Addr);
+
+NTSYSAPI LONG NTAPI RtlIpv6StringToAddressExW(
+	IN	PCWSTR		AddressString,
+	OUT	PIN6_ADDR	Address,
+	OUT	PULONG		ScopeId,
+	OUT	PUSHORT		Port);
+
+// [The following comment applies to x86 and WOW64 only.]
+// ThreadStartRoutine in EAX and Parameter in EBX.
+// Do not call directly on x86 or WOW64.
+NTSYSAPI VOID NORETURN NTAPI RtlUserThreadStart(
+	IN	PTHREAD_START_ROUTINE	ThreadStartRoutine,
+	IN	PVOID					Parameter);
+
 
 #ifdef _M_X64
 NTSYSAPI BOOLEAN NTAPI RtlAddFunctionTable(
@@ -5046,5 +5247,31 @@ FORCEINLINE ULONG RtlActiveEnumeratorsHashTable(
 {
 	return HashTable->NumEnumerators;
 }
+
+//
+// IP-address functions
+//
+
+#if defined(KEX_ENV_NATIVE)
+
+FORCEINLINE BOOLEAN IN6_IS_ADDR_V4MAPPED(
+	IN	PCIN6_ADDR	Ipv6Address)
+{
+	return (BOOLEAN)((Ipv6Address->s6_words[0] == 0) &&
+					 (Ipv6Address->s6_words[1] == 0) &&
+					 (Ipv6Address->s6_words[2] == 0) &&
+					 (Ipv6Address->s6_words[3] == 0) &&
+					 (Ipv6Address->s6_words[4] == 0) &&
+					 (Ipv6Address->s6_words[5] == 0xffff));
+}
+
+FORCEINLINE PCUCHAR IN6_GET_ADDR_V4MAPPED(
+	IN	PCIN6_ADDR	Ipv6Address)
+{
+	return (PCUCHAR)(Ipv6Address->s6_words + 6);
+}
+
+#endif
+
 
 #pragma endregion

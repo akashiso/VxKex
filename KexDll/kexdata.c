@@ -257,7 +257,7 @@ STATIC NTSTATUS KexpInitializeIfeoParameters(
 
 		if (KexRtlUnicodeStringEndsWith(&CommandLine, &SlashV, FALSE))
 		{
-			Data->Flags |= KEXDATA_FLAG_ENABLED_FOR_MSI;
+			Data->Flags |= KEXDATA_FLAG_MSI_SERVICE;
 			IfeoParameters->WinVerSpoof = (KEX_WIN_VER_SPOOF)(WinVerSpoofMax - 1);
 			goto Exit;
 		}

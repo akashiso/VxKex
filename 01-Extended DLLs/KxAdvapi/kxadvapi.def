@@ -3,6 +3,9 @@ EXPORTS
 	RegGetValueA				= KxBase.RegGetValueA
 	RegGetValueW				= KxBase.RegGetValueW
 	
+	;; token.c
+	OpenProcessToken			= Ext_OpenProcessToken
+
 	;; Forwarders to KexDll
 	EventSetInformation			= KexDll.KexEtwEventSetInformation
 
@@ -12,6 +15,7 @@ EXPORTS
 	RegOpenKeyExW				= KxBase.RegOpenKeyExW
 	RegEnumKeyExA				= KxBase.RegEnumKeyExA
 	RegEnumKeyExW				= KxBase.RegEnumKeyExW
+	RegQueryValueExW			= KxBase.RegQueryValueExW
 	GetDynamicTimeZoneInformationEffectiveYears = KxBase.GetDynamicTimeZoneInformationEffectiveYears
 	EnumDynamicTimeZoneInformation = KxBase.EnumDynamicTimeZoneInformation
 

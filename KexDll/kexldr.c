@@ -541,7 +541,7 @@ KEXAPI NTSTATUS NTAPI KexLdrLoadDll(
 	ULONG DllCharacteristics;
 	UNICODE_STRING RewrittenDll;
 	UNICODE_STRING TbsDllName;
-	BOOLEAN ShouldRewrite;
+	BOOLEAN ShouldRewrite = NtCurrentTeb()->KexLdrShouldRewriteDll;;
 	BOOLEAN RewriteTbs = FALSE;
 
 	ASSERT (VALID_UNICODE_STRING(DllName));
@@ -577,19 +577,6 @@ KEXAPI NTSTATUS NTAPI KexLdrLoadDll(
 		goto BailOut;
 	}
 
-	if (NtCurrentTeb()->KexLdrShouldRewriteDll) {
-		// KxBase has asked us to rewrite DLL names.
-		ShouldRewrite = TRUE;
-
-		// Clear KexLdrShouldRewriteDll flag so that dynamic DLL loads done
-		// from inside DllMains of Windows DLLs (user32 is one of those that
-		// does that, and it has caused crashes) do not get rewrite enabled
-		NtCurrentTeb()->KexLdrShouldRewriteDll = FALSE;
-	}
-	else {
-		ShouldRewrite = FALSE;
-	}
-
 	if (DllName->Length == 0) {
 		goto BailOut;
 	}
@@ -600,10 +587,10 @@ KEXAPI NTSTATUS NTAPI KexLdrLoadDll(
 		goto BailOut;
 	}
 
-	if (!ShouldRewrite && !AshModuleIsDynamicRewriteExemptedModule(ReturnAddress())) {
+	/*if (!ShouldRewrite && !AshModuleIsDynamicRewriteExemptedModule(ReturnAddress())) {
 		// An app (e.g. Thunderbird) has called LdrLoadDll directly.
 		ShouldRewrite = TRUE;
-	}
+	}*/
 
 	if (!ShouldRewrite) {
 		// Skip past DLL rewriting.
@@ -712,28 +699,18 @@ KEXAPI NTSTATUS NTAPI KexLdrGetDllHandleEx(
 {
 	NTSTATUS Status;
 	UNICODE_STRING RewrittenDll;
-	BOOLEAN ShouldRewrite;
+	BOOLEAN ShouldRewrite = NtCurrentTeb()->KexLdrShouldRewriteDll;
 
 	ASSERT (VALID_UNICODE_STRING(DllName));
-
-	if (NtCurrentTeb()->KexLdrShouldRewriteDll) {
-		// KxBase has asked us to rewrite the DLL
-		ShouldRewrite = TRUE;
-		NtCurrentTeb()->KexLdrShouldRewriteDll = FALSE;
-	}
-	else {
-		ShouldRewrite = FALSE;
-		goto BailOut;
-	}
 
 	if (DllName->Length == 0) {
 		goto BailOut;
 	}
 
-	if (!ShouldRewrite && !AshModuleIsDynamicRewriteExemptedModule(ReturnAddress())) {
+	/*if (!ShouldRewrite && !AshModuleIsDynamicRewriteExemptedModule(ReturnAddress())) {
 		// An app called LdrGetDllHandle(Ex) directly
 		ShouldRewrite = TRUE;
-	}
+	}*/
 
 	if (!ShouldRewrite) {
 		goto BailOut;

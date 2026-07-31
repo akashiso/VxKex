@@ -100,6 +100,7 @@ BOOL WINAPI DllMain(
 
 	if ((KexData->Flags & KEXDATA_FLAG_MSIEXEC) &&
 		!(KexData->Flags & KEXDATA_FLAG_ENABLED_FOR_MSI) &&
+		!(KexData->Flags & KEXDATA_FLAG_MSI_SERVICE) &&
 		NtCurrentPeb()->SubSystemData == NULL) {
 
 		//
@@ -117,6 +118,27 @@ BOOL WINAPI DllMain(
 		ASSERT (KexData != NULL);
 
 		Peb = NtCurrentPeb();
+
+		//
+		// Try to get rid of as much Application verifier functionality as
+		// possible.
+		//
+
+		if (OriginalMajorVersion == 6 && OriginalMinorVersion == 1) KexDisableAVrf();
+
+		//
+		// Queue an APC to patch the CreateProcessInternalW subsystem check and
+		// also to work around MacType being incompatible with Application Verifier.
+		//
+
+		Status = NtQueueApcThread(
+			NtCurrentThread(),
+			KexPostInitializationApcRoutine,
+			NULL,
+			NULL,
+			NULL);
+
+		ASSERT(NT_SUCCESS(Status));
 
 		//
 		// Open log file.
@@ -148,13 +170,6 @@ BOOL WINAPI DllMain(
 			KexRtlCurrentProcessBitness(), KexRtlOperatingSystemBitness(),
 			&Peb->ProcessParameters->ImagePathName,
 			&Peb->ProcessParameters->CommandLine);
-
-		//
-		// Try to get rid of as much Application verifier functionality as
-		// possible.
-		//
-
-		if (OriginalMajorVersion == 6 && OriginalMinorVersion == 1) KexDisableAVrf();
 
 		//
 		// Initialize Propagation subsystem.
@@ -205,6 +220,10 @@ BOOL WINAPI DllMain(
 		//
 
 		unless (KexData->IfeoParameters.DisableAppSpecific) {
+			if (AshExeBaseNameIs(L"cavalry.exe")) {
+				AshSetIsCavalryProcess();
+			}
+
 			// APPSPECIFICHACK: Environment variable hack for QBittorrent to fix
 			// bad kerning.
 			if (AshExeBaseNameIs(L"qbittorrent.exe")) {
@@ -236,6 +255,27 @@ BOOL WINAPI DllMain(
 
 				AshSetIsQt6Process();
 			}
+
+			// 
+			// It seems like that this patch will cause other problems.
+			// So we disable it currently.
+			//
+			if (FALSE && AshIsGodotImage(NtCurrentPeb()->ImageBaseAddress)) {
+
+				//
+				// APPSPECIFICHACK: Godot games use Vulkan, which can cause crashes on some
+				// Intel graphics drivers. We will disable Vulkan and force the game engine
+				// to use OpenGL instead.
+				//
+
+				AshApplyGodotEnvironmentVariableHacks();
+			}
+
+			if (AshIsZigImage(NtCurrentPeb()->ImageBaseAddress)) {
+				KexLogInformationEvent(L"App-Specific Hack applied for Zig");
+				KexData->Flags |= KEXDATA_FLAG_CONDRV_EMULATION;
+			}
+
 
 			// APPSPECIFICHACK: Detect Chromium based on EXE exports.
 			AshPerformChromiumDetectionFromModuleExports(Peb->ImageBaseAddress);

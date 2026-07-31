@@ -239,6 +239,7 @@
   <ItemGroup>
     <ClCompile Include="dllmain.c" />
     <ClCompile Include="forwards.c" />
+    <ClCompile Include="token.c" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="kxadvapi.rc" />

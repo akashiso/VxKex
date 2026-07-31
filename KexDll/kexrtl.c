@@ -997,6 +997,328 @@ KEXAPI VOID NTAPI KexRtlClearBit(
 	_bittestandreset((PLONG) BitmapHeader->Buffer, BitNumber);
 }
 
+KEXAPI VOID NTAPI KexRtlGetDeviceFamilyInfoEnum(
+	OUT	PULONGLONG	UAPInfo OPTIONAL,
+	OUT	PULONG		DeviceFamily OPTIONAL,
+	OUT	PULONG		DeviceForm OPTIONAL)
+{
+	if (UAPInfo != NULL) {
+		// The 3570 is an approximate number from Win10 build 19042
+		// UBR = update build revision
+		*UAPInfo = (NtCurrentPeb()->OSBuildNumber << 16) + 3570;
+	}
+
+	if (DeviceFamily) {
+		*DeviceFamily = DEVICEFAMILYINFOENUM_DESKTOP;
+	}
+
+	if (DeviceForm) {
+		*DeviceForm = DEVICEFAMILYDEVICEFORM_DESKTOP;
+	}
+}
+
+// Microsoft documentation incorrectly lists TargetPath as an IN parameter, but it
+// is actually an OUT parameter.
+KEXAPI NTSTATUS NTAPI KexRtlGetPersistedStateLocation(
+	IN	PCWSTR				SourceID,
+	IN	PCWSTR				CustomValue OPTIONAL,
+	IN	PCWSTR				DefaultPath OPTIONAL,
+	IN	STATE_LOCATION_TYPE	StateLocationType,
+	OUT	PWCHAR				TargetPath,
+	IN	ULONG				BufferCbIn,
+	OUT	PULONG				BufferCbOut OPTIONAL)
+{
+	if (StateLocationType >= StateLocationTypeMaximum) {
+		return STATUS_INVALID_PARAMETER_3;
+	}
+
+	if (DefaultPath) {
+		ULONG DefaultPathCbWithNullTerminator;
+
+		//
+		// Fun fact, the Win11 NTDLL checks for integer overflow while doing these
+		// string length calculations and can return STATUS_INTEGER_OVERFLOW.
+		//
+		// Of course we won't be doing that because any app that passes in a >2GB
+		// string which is supposed to be representing a registry path is already
+		// broken beyond repair.
+		//
+
+		DefaultPathCbWithNullTerminator = ((ULONG)wcslen(DefaultPath) + 1) * sizeof(WCHAR);
+
+		if (BufferCbOut) {
+			*BufferCbOut = DefaultPathCbWithNullTerminator;
+		}
+
+		if (DefaultPathCbWithNullTerminator > BufferCbIn) {
+			return STATUS_BUFFER_OVERFLOW;
+		}
+
+		RtlMoveMemory(TargetPath, DefaultPath, DefaultPathCbWithNullTerminator);
+		return STATUS_SUCCESS;
+	}
+
+	KexLogDebugEvent(
+		L"Failed attempt to find a persisted state location\r\n\r\n"
+		L"SourceID = %s\r\n"
+		L"CustomValue = %s\r\n"
+		L"DefaultPath = %s\r\n"
+		L"StateLocationType = %d\r\n"
+		L"TargetPath = 0x%p\r\n"
+		L"BufferCbIn = %d\r\n"
+		L"BufferCbOut = 0x%p",
+		SourceID,
+		CustomValue,
+		DefaultPath,
+		StateLocationType,
+		TargetPath,
+		BufferCbIn,
+		BufferCbOut);
+
+	//
+	// This is the error code that Win11 NTDLL returns when DefaultPath is not
+	// supplied and it cannot find \Registry\Machine\System\CurrentControlSet\
+	// Control\StateSeparation\RedirectionMap\{Keys,Files} where Keys or Files
+	// is based on the StateLocationType parameter.
+	//
+	// If it CAN find this registry location, then it will give a target path
+	// based on a subkey read out of this location. Windows 7 of course does not
+	// have this redirection map, so we don't even try to find it.
+	//
+
+	return STATUS_OBJECT_NAME_NOT_FOUND;
+}
+
+#ifndef _M_X64
+typedef PVOID TYPEDEF_TYPE_NAME(RUNTIME_FUNCTION);
+#endif
+
+KEXAPI NTSTATUS NTAPI KexRtlAddGrowableFunctionTable(
+	OUT	PPVOID				DynamicTable,
+	IN	PRUNTIME_FUNCTION	FunctionTable,
+	IN	ULONG				EntryCount,
+	IN	ULONG				MaximumEntryCount,
+	IN	ULONG_PTR			RangeBase,
+	IN	ULONG_PTR			RangeEnd)
+{
+#ifdef _M_X64
+	BOOLEAN Success;
+
+	Success = RtlAddFunctionTable(FunctionTable, EntryCount, RangeBase);
+
+	if (Success) {
+		*DynamicTable = NULL;
+		return STATUS_SUCCESS;
+	}
+	else {
+		return STATUS_UNSUCCESSFUL;
+	}
+#else
+	ASSERT(FALSE);
+	return STATUS_NOT_IMPLEMENTED;
+#endif
+}
+
+KEXAPI VOID NTAPI KexRtlDeleteGrowableFunctionTable(
+	IN	PVOID		DynamicTable)
+{
+#ifdef _M_X64
+	RtlDeleteFunctionTable(DynamicTable);
+	return;
+#else
+	ASSERT(FALSE);
+	return;
+#endif
+}
+
+KEXAPI LONGLONG NTAPI KexRtlGetSystemTimePrecise(
+	VOID)
+{
+	LONGLONG CurrentTime;
+	NtQuerySystemTime(&CurrentTime);
+	return CurrentTime;
+}
+
+//
+// Full implementation based on Win10 NTDLL decompilation.
+//
+KEXAPI NTSTATUS NTAPI KexRtlCanonicalizeDomainName(
+	OUT	PUNICODE_STRING		DestinationString,
+	IN	PCUNICODE_STRING	SourceString,
+	IN	BOOLEAN				Strict)
+{
+	BOOLEAN Success;
+	NTSTATUS Status;
+	ULONG Index;
+	ULONG ScopeId;
+	UNICODE_STRING RawName;
+	USHORT Port;
+	IN_ADDR Ipv4Address;
+	IN6_ADDR Ipv6Address;
+	ULONG CanonicalNameLength;
+	ULONG PunycodedNameLength;
+	WCHAR CanonicalNameBuffer[256];
+	WCHAR PunycodedNameBuffer[256];
+	WCHAR RawNameBuffer[256];
+
+	CanonicalNameLength = ARRAYSIZE(CanonicalNameBuffer);
+	PunycodedNameLength = ARRAYSIZE(PunycodedNameBuffer);
+
+	RtlInitEmptyUnicodeString(&RawName, RawNameBuffer, sizeof(RawNameBuffer));
+	RtlCopyUnicodeString(&RawName, SourceString);
+
+	if (RawName.Length == RawName.MaximumLength) {
+		return STATUS_INVALID_IDN_NORMALIZATION;
+	}
+
+	//
+	// Try parse as IPv6.
+	//
+
+	Status = RtlIpv6StringToAddressExW(
+		RawName.Buffer,
+		&Ipv6Address,
+		&ScopeId,
+		&Port);
+
+	if (NT_SUCCESS(Status) && Port == 0) {
+		//
+		// We could parse this address as IPv6.
+		// Convert the IPv6 struct back into a string - as an IPv6 string if it
+		// is a true IPv6 address, or an IPv4 string if it is a mapped IPv4 address.
+		//
+
+		if (IN6_IS_ADDR_V4MAPPED(&Ipv6Address) && ScopeId == 0) {
+			// Convert the IPv6-formatted IPv4 address into a real IPv4 address
+			RtlCopyMemory(
+				&Ipv4Address,
+				IN6_GET_ADDR_V4MAPPED(&Ipv6Address),
+				sizeof(Ipv4Address));
+
+			Status = RtlIpv4AddressToStringExW(
+				&Ipv4Address,
+				Port,
+				CanonicalNameBuffer,
+				&CanonicalNameLength);
+		}
+		else {
+			Status = RtlIpv6AddressToStringExW(
+				&Ipv6Address,
+				ScopeId,
+				Port,
+				CanonicalNameBuffer,
+				&CanonicalNameLength);
+		}
+
+		if (!NT_SUCCESS(Status)) {
+			return Status;
+		}
+
+		Success = RtlCreateUnicodeString(DestinationString, CanonicalNameBuffer);
+		Status = Success ? STATUS_SUCCESS : STATUS_NO_MEMORY;
+		return Status;
+	}
+
+	//
+	// Try parse as IPv4.
+	//
+
+	Status = RtlIpv4StringToAddressExW(
+		RawName.Buffer,
+		Strict,
+		&Ipv4Address,
+		&Port);
+
+	if (NT_SUCCESS(Status) && Port == 0) {
+		//
+		// We could parse the string as IPv4. Convert it back to a string.
+		//
+
+		Status = RtlIpv4AddressToStringExW(
+			&Ipv4Address,
+			Port,
+			CanonicalNameBuffer,
+			&CanonicalNameLength);
+
+		if (!NT_SUCCESS(Status)) {
+			return Status;
+		}
+
+		Success = RtlCreateUnicodeString(DestinationString, CanonicalNameBuffer);
+		Status = Success ? STATUS_SUCCESS : STATUS_NO_MEMORY;
+		return Status;
+	}
+
+	//
+	// Try parse as IDN (internationalized domain name), and convert to punycode
+	//
+
+	Status = RtlIdnToAscii(
+		0,
+		SourceString->Buffer,
+		KexRtlUnicodeStringCch(SourceString),
+		PunycodedNameBuffer,
+		&PunycodedNameLength);
+
+	if (!NT_SUCCESS(Status)) {
+		return Status;
+	}
+
+	//
+	// Lowercase the Punycode representation
+	//
+
+	for (Index = 0; Index < PunycodedNameLength; ++Index) {
+		// Note: we're using towlower (ntdll CRT) instead of ToLower (vxkex macro)
+		// because ToLower does not handle non-ASCII characters.
+		PunycodedNameBuffer[Index] = towlower(PunycodedNameBuffer[Index]);
+	}
+
+	//
+	// Convert it back to proper Unicode
+	//
+
+	Status = RtlIdnToUnicode(
+		0,
+		PunycodedNameBuffer,
+		PunycodedNameLength,
+		CanonicalNameBuffer,
+		&CanonicalNameLength);
+
+	if (!NT_SUCCESS(Status)) {
+		return Status;
+	}
+
+	if (CanonicalNameLength >= ARRAYSIZE(CanonicalNameBuffer)) {
+		// potential buffer overflow
+		return STATUS_INVALID_IDN_NORMALIZATION;
+	}
+
+	// Ensure null termination.
+	// I'm not sure whether RtlIdnToUnicode guarantees a null terminated buffer,
+	// but since it works with explicit length variables, it probably doesn't.
+	// Win10 code does do this so it's probably required.
+	CanonicalNameBuffer[CanonicalNameLength] = '\0';
+
+	Success = RtlCreateUnicodeString(DestinationString, CanonicalNameBuffer);
+	Status = Success ? STATUS_SUCCESS : STATUS_NO_MEMORY;
+	return Status;
+}
+
+//
+// This is just kernel32!IsProcessorFeaturePresent on win7, but they renamed it
+// and moved it to NTDLL on Windows 10 and higher.
+//
+KEXAPI BOOLEAN NTAPI KexRtlIsProcessorFeaturePresent(
+	IN	ULONG	ProcessorFeature)
+{
+	if (ProcessorFeature >= PROCESSOR_FEATURE_MAX) {
+		return FALSE;
+	}
+
+	return SharedUserData->ProcessorFeatures[ProcessorFeature];
+}
+
 //
 // Stubs.
 //
@@ -1028,6 +1350,12 @@ KEXAPI NTSTATUS NTAPI KexRtlCheckPortableOperatingSystem(
 	OUT	PBOOLEAN	IsPortable)
 {
 	*IsPortable = FALSE;
+	return STATUS_SUCCESS;
+}
+
+KEXAPI NTSTATUS NTAPI KexRtlUnsubscribeWnfNotificationWaitForCompletion(
+	IN	PVOID	Subscription)
+{
 	return STATUS_SUCCESS;
 }
 
@@ -1067,61 +1395,4 @@ KEXAPI NTSTATUS NTAPI KexRtlSubscribeWnfStateChangeNotification(
 	ULONG		SerializationGroupIndex)
 {
 	return STATUS_NOT_IMPLEMENTED;
-}
-
-#ifndef _M_X64
-typedef PVOID TYPEDEF_TYPE_NAME(RUNTIME_FUNCTION);
-#endif
-
-KEXAPI NTSTATUS NTAPI KexRtlAddGrowableFunctionTable(
-	OUT	PPVOID				DynamicTable,
-	IN	PRUNTIME_FUNCTION	FunctionTable,
-	IN	ULONG				EntryCount,
-	IN	ULONG				MaximumEntryCount,
-	IN	ULONG_PTR			RangeBase,
-	IN	ULONG_PTR			RangeEnd)
-{
-#ifdef _M_X64
-	BOOLEAN Success;
-
-	Success = RtlAddFunctionTable(FunctionTable, EntryCount, RangeBase);
-
-	if (Success) {
-		*DynamicTable = NULL;
-		return STATUS_SUCCESS;
-	} else {
-		return STATUS_UNSUCCESSFUL;
-	}
-#else
-	ASSERT (FALSE);
-	return STATUS_NOT_IMPLEMENTED;
-#endif
-}
-
-KEXAPI VOID NTAPI KexRtlDeleteGrowableFunctionTable(
-	IN	PVOID		DynamicTable)
-{
-#ifdef _M_X64
-	RtlDeleteFunctionTable(DynamicTable);
-	return;
-#else
-	ASSERT (FALSE);
-	return;
-#endif
-}
-
-KEXAPI VOID NTAPI KexRtlGrowFunctionTable(
-	PVOID DynamicTable,
-	IN DWORD NewEntryCount)
-{
-	//TODO: Implement
-	return;
-}
-
-KEXAPI LONGLONG NTAPI KexRtlGetSystemTimePrecise(
-	VOID)
-{
-	LONGLONG CurrentTime;
-	NtQuerySystemTime(&CurrentTime);
-	return CurrentTime;
 }

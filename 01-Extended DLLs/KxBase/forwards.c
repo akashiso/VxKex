@@ -994,7 +994,7 @@
 #pragma comment(linker, "/EXPORT:RegQueryInfoKeyA=kernel32.RegQueryInfoKeyA")
 #pragma comment(linker, "/EXPORT:RegQueryInfoKeyW=kernel32.RegQueryInfoKeyW")
 #pragma comment(linker, "/EXPORT:RegQueryValueExA=kernel32.RegQueryValueExA")
-#pragma comment(linker, "/EXPORT:RegQueryValueExW=kernel32.RegQueryValueExW")
+//#pragma comment(linker, "/EXPORT:RegQueryValueExW=kernel32.RegQueryValueExW")
 #pragma comment(linker, "/EXPORT:RegRestoreKeyA=kernel32.RegRestoreKeyA")
 #pragma comment(linker, "/EXPORT:RegRestoreKeyW=kernel32.RegRestoreKeyW")
 #pragma comment(linker, "/EXPORT:RegSaveKeyExA=kernel32.RegSaveKeyExA")

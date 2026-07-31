@@ -17,9 +17,18 @@ EXPORTS
 	WinHttpWebSocketShutdown
 
 	;; winsock.c
+	;; Note: Some things seem to import from ws2_32.dll by ORDINAL, including
+	;; Windows DLLs such as webio.dll.
+	;; Failure to export specific ordinals will cause extremely weird errors,
+	;; because the wrong functions will be called.
+	;; All Ext_* and Stub_* function exports must include an ordinal
+	;; specification.
 	GetHostNameW
-	getaddrinfo = Ext_getaddrinfo
-	GetAddrInfoExA = Ext_GetAddrInfoExA
+	getaddrinfo							= Ext_getaddrinfo		@178
+	GetAddrInfoExW						= Ext_GetAddrInfoExW	@29
+	setsockopt							= Ext_setsockopt		@21
+	getsockopt							= Ext_getsockopt		@7
+	WSASetLastError						= Stub_WSASetLastError	@112
 	GetAddrInfoExW = Ext_GetAddrInfoExW
 	GetAddrInfoExOverlappedResult
 	GetAddrInfoExCancel
