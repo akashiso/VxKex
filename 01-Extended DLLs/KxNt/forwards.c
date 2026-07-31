@@ -3837,7 +3837,7 @@
 #pragma comment(linker, "/EXPORT:ZwWow64QueryVirtualMemory64=ntdll.ZwWow64QueryVirtualMemory64,@1845")
 #pragma comment(linker, "/EXPORT:ZwWow64ReadVirtualMemory64=ntdll.ZwWow64ReadVirtualMemory64,@1846")
 #pragma comment(linker, "/EXPORT:ZwWow64WriteVirtualMemory64=ntdll.ZwWow64WriteVirtualMemory64,@1847")
-#pragma comment(linker, "/EXPORT:ZwWriteFile=ntdll.ZwWriteFile,@1848")
+//#pragma comment(linker, "/EXPORT:ZwWriteFile=ntdll.ZwWriteFile,@1848")
 #pragma comment(linker, "/EXPORT:ZwWriteFileGather=ntdll.ZwWriteFileGather,@1849")
 #pragma comment(linker, "/EXPORT:ZwWriteRequestData=ntdll.ZwWriteRequestData,@1850")
 #pragma comment(linker, "/EXPORT:ZwWriteVirtualMemory=ntdll.ZwWriteVirtualMemory,@1851")

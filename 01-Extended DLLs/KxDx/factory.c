@@ -29,6 +29,7 @@ HRESULT WINAPI CreateDXGIFactory2(
 	BOOL dxgifact2Used = FALSE;
 
 	if (IsEqualIID(RefIID, &IID_IDXGIFactory)
+		|| IsEqualIID(RefIID, &IID_IDXGIFactory1)
 		|| IsEqualIID(RefIID, &IID_IDXGIFactory2))
 	{
 		Result = CreateDXGIFactory1(

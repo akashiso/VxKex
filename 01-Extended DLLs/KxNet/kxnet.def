@@ -29,7 +29,6 @@ EXPORTS
 	setsockopt							= Ext_setsockopt		@21
 	getsockopt							= Ext_getsockopt		@7
 	WSASetLastError						= Stub_WSASetLastError	@112
-	GetAddrInfoExW = Ext_GetAddrInfoExW
 	GetAddrInfoExOverlappedResult
 	GetAddrInfoExCancel
 	
