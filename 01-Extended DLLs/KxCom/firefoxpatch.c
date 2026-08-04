@@ -165,7 +165,6 @@ KXCOMAPI HRESULT WINAPI Ext_CoCreateInstanceEx(
 	if (1)
 	{
 		LPOLESTR RefCLSIDAsString;
-		LPOLESTR RefIIDAsString;
 
 		StringFromCLSID(RefCLSID, &RefCLSIDAsString);
 
@@ -182,7 +181,6 @@ KXCOMAPI HRESULT WINAPI Ext_CoCreateInstanceEx(
 			ClassContext);
 
 		CoTaskMemFree(RefCLSIDAsString);
-		CoTaskMemFree(RefIIDAsString);
 	}
 
 	return Result;
