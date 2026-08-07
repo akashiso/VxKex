@@ -8,13 +8,27 @@
 //
 HRESULT WINAPI Ext_D2D1CreateFactory(
 	D2D1_FACTORY_TYPE			factoryType,
-	REFIID						riid,
+	REFIID						riid_1,
 	const D2D1_FACTORY_OPTIONS* pFactoryOptions,
 	void** ppIFactory
 )
 {
 	HRESULT Result;
-	BOOL d2dfact1Used = FALSE;
+	BOOL IsD2D1Factory1Used = FALSE;
+	BOOL ForceWrapping = FALSE;
+
+	LPCGUID riid = riid_1;
+
+	// 
+	// TODO: Figure out if this is a good idea or not.
+	//
+
+	unless(KexData->IfeoParameters.DisableAppSpecific)
+		if (AshExeBaseNameIs(L"ImageGlass.exe"))
+			ForceWrapping = TRUE;
+
+	if (ForceWrapping)
+		riid = &IID_ID2D1Factory7;
 
 	if (IsEqualIID(riid, &IID_ID2D1Factory)
 		|| IsEqualIID(riid, &IID_ID2D1Factory1))
@@ -38,7 +52,7 @@ HRESULT WINAPI Ext_D2D1CreateFactory(
 			L"Higher version of D2D1Factory was queried."
 		);
 
-		d2dfact1Used = TRUE;
+		IsD2D1Factory1Used = TRUE;
 		Result = D2D1CreateFactory(
 			factoryType,
 			&IID_ID2D1Factory1,
@@ -71,7 +85,7 @@ HRESULT WINAPI Ext_D2D1CreateFactory(
 
 	if (FAILED(Result))
 	{
-		if (d2dfact1Used || IsEqualIID(riid, &IID_ID2D1Factory1))
+		if (IsD2D1Factory1Used || IsEqualIID(riid, &IID_ID2D1Factory1))
 		{
 			KexLogErrorEvent(
 				L"Failed to create ID2D1Factory1\r\n\r\n"
