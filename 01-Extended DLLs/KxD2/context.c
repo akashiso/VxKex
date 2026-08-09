@@ -212,7 +212,7 @@ void STDMETHODCALLTYPE IID2D1DeviceContext0To6_DrawGlyphRun(
 	{
 		IID2D1TextRdrContext ctx;
 		ctx.brush = foregroundBrush;
-		ctx.dc = (ID2D1DeviceContext*)This;
+		ctx.dc = (ID2D1DeviceContext*)This->Thi;
 		ctx.option = 0;
 
 		IID2D1TextRenderer_DrawGlyphRun(This->textRenderer, &ctx, baselineOrigin.x, baselineOrigin.y, measuringMode, glyphRun, NULL, NULL);

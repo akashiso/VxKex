@@ -46,6 +46,7 @@ typedef struct IID2D1TextRenderer
 	PPVOID lpVtbl;
 	ULONG RefCount;
 	ID2D1Factory* factory;
+	IDWriteRenderingParams* defaultParams;
 } IID2D1TextRenderer;
 
 // factory.c & device.c & context.c

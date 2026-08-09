@@ -46,7 +46,10 @@ ULONG STDMETHODCALLTYPE IID2D1TextRenderer_Release(
 	ULONG RefCount = InterlockedDecrement(&This->RefCount);
 
 	if (RefCount == 0)
+	{
+		IUnknown_Release(This->defaultParams);
 		CoTaskMemFree(This);
+	}
 	return RefCount;
 }
 
@@ -351,6 +354,8 @@ HRESULT STDMETHODCALLTYPE IID2D1TextRenderer_DrawGlyphRunImpl(
 	ID2D1RenderTarget* dc = (ID2D1RenderTarget*)rctx->dc;
 
 	ID2D1RenderTarget_GetTextRenderingParams(dc, &rendering_params);
+	if (rendering_params == NULL)
+		rendering_params = This->defaultParams;
 
 	// Call to IDWriteRenderingParams_GetRenderingMode
 	PPVOID lpVtbl = (PPVOID)((rendering_params)->lpVtbl);
@@ -684,13 +689,40 @@ void* IID2D1TextRendererVtbl[] =
 
 IID2D1TextRenderer* CreateTextRenderer(void* fact)
 {
+	IUnknown* dwfact;
+
+	if (FAILED(DWriteCoreCreateFactory(DWRITE_FACTORY_TYPE_SHARED, &IID_IDWriteFactory,
+									   (IUnknown**)&dwfact)))
+	{
+		return NULL;
+	}
+
+	IDWriteRenderingParams* params;
+	PPVOID lpVtbl = (PPVOID)(((IUnknown*)dwfact)->lpVtbl);
+
+	// Call to IDWriteFactory_CreateRenderingParams
+	if (FAILED(((HRESULT(STDMETHODCALLTYPE*)(
+		IUnknown*,
+		IDWriteRenderingParams**))(lpVtbl[10]))(dwfact, &params)))
+	{
+		IUnknown_Release(dwfact);
+		return NULL;
+	}
+
 	IID2D1TextRenderer* r = (IID2D1TextRenderer*)CoTaskMemAlloc(sizeof(IID2D1TextRenderer));
 	if (r == NULL)
+	{
+		IUnknown_Release(params);
+		IUnknown_Release(dwfact);
 		return NULL;
+	}
 
 	r->lpVtbl = IID2D1TextRendererVtbl;
 	r->RefCount = 1;
 	r->factory = (ID2D1Factory*)fact;
+	r->defaultParams = params;
+
+	IUnknown_Release(dwfact);
 
 	return r;
 }
