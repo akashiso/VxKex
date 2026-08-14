@@ -274,22 +274,382 @@ VOID KexSetupApplyAclToFile(
 	ASSERT (ErrorCode == ERROR_SUCCESS);
 }
 
+BOOLEAN KexSetupFilesAreIdentical(
+	IN	PCWSTR	File1,
+	IN	PCWSTR	File2)
+{
+	BOOLEAN Identical;
+	BOOLEAN Success;
+	HANDLE FileHandle1;
+	HANDLE FileHandle2;
+	HANDLE SectionHandle1;
+	HANDLE SectionHandle2;
+	PVOID Data1;
+	PVOID Data2;
+	LARGE_INTEGER FileSize1;
+	LARGE_INTEGER FileSize2;
+
+	Identical = FALSE;
+	FileHandle1 = NULL;
+	FileHandle2 = NULL;
+	SectionHandle1 = NULL;
+	SectionHandle2 = NULL;
+	Data1 = NULL;
+	Data2 = NULL;
+
+	//
+	// Open the files.
+	//
+
+	FileHandle1 = CreateFileTransacted(
+		File1,
+		GENERIC_READ,
+		FILE_SHARE_READ,
+		NULL,
+		OPEN_EXISTING,
+		FILE_ATTRIBUTE_NORMAL | FILE_FLAG_SEQUENTIAL_SCAN,
+		NULL,
+		KexSetupTransactionHandle,
+		NULL,
+		NULL);
+
+	ASSERT(FileHandle1 != INVALID_HANDLE_VALUE);
+
+	if (FileHandle1 == INVALID_HANDLE_VALUE) {
+		goto Exit;
+	}
+
+	FileHandle2 = CreateFileTransacted(
+		File2,
+		GENERIC_READ,
+		FILE_SHARE_READ,
+		NULL,
+		OPEN_EXISTING,
+		FILE_ATTRIBUTE_NORMAL | FILE_FLAG_SEQUENTIAL_SCAN,
+		NULL,
+		KexSetupTransactionHandle,
+		NULL,
+		NULL);
+
+	ASSERT(FileHandle2 != INVALID_HANDLE_VALUE);
+
+	if (FileHandle2 == INVALID_HANDLE_VALUE) {
+		goto Exit;
+	}
+
+	//
+	// Check file size is identical.
+	//
+
+	Success = GetFileSizeEx(FileHandle1, &FileSize1);
+	ASSERT(Success);
+
+	if (!Success) {
+		goto Exit;
+	}
+
+	Success = GetFileSizeEx(FileHandle2, &FileSize2);
+	ASSERT(Success);
+
+	if (!Success) {
+		goto Exit;
+	}
+
+	if (FileSize1.QuadPart != FileSize2.QuadPart) {
+		// Files can't be the same if size is different
+		goto Exit;
+	}
+
+	if (FileSize1.QuadPart == 0) {
+		// Zero-length files are always identical
+		Identical = TRUE;
+		goto Exit;
+	}
+
+	//
+	// Create section objects.
+	//
+
+	SectionHandle1 = CreateFileMapping(
+		FileHandle1,
+		NULL,
+		PAGE_READONLY,
+		0,
+		0,
+		NULL);
+
+	ASSERT(SectionHandle1 != NULL);
+
+	if (SectionHandle1 == NULL) {
+		goto Exit;
+	}
+
+	SectionHandle2 = CreateFileMapping(
+		FileHandle2,
+		NULL,
+		PAGE_READONLY,
+		0,
+		0,
+		NULL);
+
+	ASSERT(SectionHandle2 != NULL);
+
+	if (SectionHandle2 == NULL) {
+		goto Exit;
+	}
+
+	//
+	// Map section objects to memory.
+	//
+
+	Data1 = MapViewOfFile(
+		SectionHandle1,
+		FILE_MAP_READ,
+		0,
+		0,
+		0);
+
+	ASSERT(Data1 != NULL);
+
+	if (Data1 == NULL) {
+		goto Exit;
+	}
+
+	Data2 = MapViewOfFile(
+		SectionHandle2,
+		FILE_MAP_READ,
+		0,
+		0,
+		0);
+
+	ASSERT(Data2 != NULL);
+
+	if (Data2 == NULL) {
+		goto Exit;
+	}
+
+	//
+	// Check if the file contents are equal.
+	//
+
+	ASSERT(FileSize1.QuadPart == FileSize2.QuadPart);
+	ASSERT(FileSize1.QuadPart > 0);
+	Identical = RtlEqualMemory(Data1, Data2, (SIZE_T)FileSize1.QuadPart);
+
+Exit:
+	if (Data1) {
+		Success = UnmapViewOfFile(Data1);
+		ASSERT(Success);
+	}
+
+	if (Data2) {
+		Success = UnmapViewOfFile(Data2);
+		ASSERT(Success);
+	}
+
+	SafeClose(SectionHandle1);
+	SafeClose(SectionHandle2);
+	SafeClose(FileHandle1);
+	SafeClose(FileHandle2);
+
+	return Identical;
+}
+
+// NOTE: This function will return TRUE if Directory2 contains additional files that
+// are not in Directory1. Be careful.
+BOOLEAN KexSetupDirectoriesAreIdentical(
+	IN	PCWSTR	Directory1,
+	IN	PCWSTR	Directory2)
+{
+	BOOLEAN Identical;
+	WCHAR FindPath[MAX_PATH];
+	HANDLE FindHandle;
+	WIN32_FIND_DATA FindData;
+	ULONG NumberOfItemsInDirectory1;
+	ULONG NumberOfItemsInDirectory2;
+
+	Identical = FALSE;
+	FindHandle = NULL;
+	NumberOfItemsInDirectory1 = 0;
+	NumberOfItemsInDirectory2 = 0;
+
+	//
+	// Use FindFirstFile & co. to loop through the contents of the first
+	// directory.
+	//
+
+	StringCchCopy(FindPath, ARRAYSIZE(FindPath), Directory1);
+	PathCchAppend(FindPath, ARRAYSIZE(FindPath), L"*");
+
+	FindHandle = FindFirstFileTransacted(
+		FindPath,
+		FindExInfoBasic,
+		&FindData,
+		FindExSearchNameMatch,
+		NULL,
+		0,
+		KexSetupTransactionHandle);
+
+	ASSERT(FindHandle != INVALID_HANDLE_VALUE);
+
+	if (FindHandle == INVALID_HANDLE_VALUE) {
+		goto Exit;
+	}
+
+	do {
+		WCHAR ThisFile[MAX_PATH];	// file from Directory1
+		WCHAR OtherFile[MAX_PATH];	// file from Directory2
+
+		if ((FindData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) &&
+			(StringEqual(FindData.cFileName, L".") || StringEqual(FindData.cFileName, L".."))) {
+			continue;
+		}
+
+		++NumberOfItemsInDirectory1;
+
+		StringCchCopy(ThisFile, ARRAYSIZE(ThisFile), Directory1);
+		PathCchAppend(ThisFile, ARRAYSIZE(ThisFile), FindData.cFileName);
+		StringCchCopy(OtherFile, ARRAYSIZE(OtherFile), Directory2);
+		PathCchAppend(OtherFile, ARRAYSIZE(OtherFile), FindData.cFileName);
+
+		Identical = KexSetupFilesOrDirectoriesAreIdentical(ThisFile, OtherFile);
+
+		if (!Identical) {
+			goto Exit;
+		}
+
+		SetLastError(ERROR_SUCCESS);
+	} until(!FindNextFile(FindHandle, &FindData));
+
+	ASSERT(GetLastError() == ERROR_NO_MORE_FILES);
+
+	Identical = TRUE;
+
+Exit:
+	SafeFindClose(FindHandle);
+
+	return Identical;
+}
+
+// NOTE: This function will return TRUE if File2 is a directory which contains
+// additional files that are not in File1. Be careful.
+BOOLEAN KexSetupFilesOrDirectoriesAreIdentical(
+	IN	PCWSTR	File1,
+	IN	PCWSTR	File2)
+{
+	BOOLEAN Success;
+	BOOLEAN Identical;
+	WIN32_FILE_ATTRIBUTE_DATA AttributeData1;
+	WIN32_FILE_ATTRIBUTE_DATA AttributeData2;
+	BOOLEAN IsDirectory1;
+	BOOLEAN IsDirectory2;
+
+	Identical = FALSE;
+
+	//
+	// Figure out whether File1 and File2 are directories.
+	// Note: If either File1 or File2 does not exist, then
+	// GetFileAttributesTransacted will fail, and we'll correctly
+	// return FALSE.
+	//
+
+	Success = GetFileAttributesTransacted(
+		File1,
+		GetFileExInfoStandard,
+		&AttributeData1,
+		KexSetupTransactionHandle);
+
+	if (!Success) {
+		goto Exit;
+	}
+
+	Success = GetFileAttributesTransacted(
+		File2,
+		GetFileExInfoStandard,
+		&AttributeData2,
+		KexSetupTransactionHandle);
+
+	if (!Success) {
+		goto Exit;
+	}
+
+	IsDirectory1 = !!(AttributeData1.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY);
+	IsDirectory2 = !!(AttributeData2.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY);
+
+	//
+	// If both are files, we'll just call KexSetupFilesAreIdentical.
+	// If one is a file and one is a directory, we'll return FALSE.
+	// If both are directories, then we'll need to start recursing.
+	//
+
+	if (!IsDirectory1 && !IsDirectory2) {
+		if ((AttributeData1.nFileSizeLow != AttributeData2.nFileSizeLow) ||
+			(AttributeData1.nFileSizeHigh != AttributeData2.nFileSizeHigh)) {
+
+			// file sizes different, no need to call comparison function
+			goto Exit;
+		}
+
+		Identical = KexSetupFilesAreIdentical(File1, File2);
+		goto Exit;
+	}
+
+	if (IsDirectory1 != IsDirectory2) {
+		goto Exit;
+	}
+
+	ASSERT(IsDirectory1 && IsDirectory2);
+
+	Identical = KexSetupDirectoriesAreIdentical(File1, File2);
+
+Exit:
+	return Identical;
+}
+
 VOID KexSetupSupersedeFile(
 	IN	PCWSTR	SourceFile,
 	IN	PCWSTR	TargetFile)
 {
 	BOOLEAN Success;
 
-	Success = SupersedeFile(SourceFile, TargetFile, KexSetupTransactionHandle);
+	Success = MoveFileTransacted(
+		SourceFile,
+		TargetFile,
+		NULL,
+		NULL,
+		MOVEFILE_REPLACE_EXISTING | MOVEFILE_COPY_ALLOWED,
+		KexSetupTransactionHandle);
 
 	if (!Success) {
-		ErrorBoxF(
-			L"Failed to move \"%s\" to \"%s\". %s",
-			SourceFile,
-			TargetFile,
-			GetLastErrorAsString());
+		if (KexSetupFilesOrDirectoriesAreIdentical(SourceFile, TargetFile)) {
+			// We couldn't move the files but it turns out that they're the same anyway.
 
-		RtlRaiseStatus(STATUS_KEXSETUP_FAILURE);
+			//
+			// Fix the ACLs in the files even though we don't have to change the file
+			// contents.
+			// Some beta builds were distributed which failed to set ACLs on dictionary
+			// files and ICU data files, etc. which means that applications would fail
+			// if they tried to use these files while running as non-admin.
+			//
+
+			KexSetupApplyAclToFile(TargetFile);
+			return;
+		}
+
+		// The target file is likely in use.
+		// Call SupersedeFile, which renames the existing file and then
+		// uses MOVEFILE_DELAY_UNTIL_REBOOT to schedule deletion later.
+		Success = SupersedeFile(SourceFile, TargetFile, KexSetupTransactionHandle);
+
+		if (!Success) {
+			ErrorBoxF(
+				L"Failed to move \"%s\" to \"%s\". %s",
+				SourceFile,
+				TargetFile,
+				GetLastErrorAsString());
+
+			RtlRaiseStatus(STATUS_KEXSETUP_FAILURE);
+		}
 	}
 
 	//
