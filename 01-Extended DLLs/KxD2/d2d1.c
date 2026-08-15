@@ -24,8 +24,7 @@ HRESULT WINAPI Ext_D2D1CreateFactory(
 	//
 
 	unless(KexData->IfeoParameters.DisableAppSpecific) {
-		if (AshExeBaseNameIs(L"ImageGlass.exe")
-			|| AshExeBaseNameIs(L"cherrytree.exe"))
+		if (AshExeBaseNameIs(L"ImageGlass.exe"))
 			ForceWrapping = TRUE;
 	}
 

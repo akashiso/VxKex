@@ -93,6 +93,23 @@ HRESULT STDMETHODCALLTYPE IDWriteFactory7_CreateTextLayout(
 	return hr;
 }
 
+HRESULT STDMETHODCALLTYPE Ext_DWriteCoreCreateFactory(
+	IN	DWRITE_FACTORY_TYPE	factoryType,
+	IN	REFIID              iid,
+	OUT	IUnknown**			factory)
+{
+	IUnknown* obj;
+	HRESULT Result = DWriteCoreCreateFactory(factoryType, iid, &obj);
+
+	KEX_VTBL_MODIFICATION mod[] = {
+		{2 * sizeof(PVOID), IUnknownObj_Release},
+		{18 * sizeof(PVOID), IDWriteFactory7_CreateTextLayout}
+	};
+	KexVtblPatchInplace(obj->lpVtbl, mod, 2, FALSE, NULL);
+	*factory = obj;
+	return Result;
+}
+
 KXDWAPI HRESULT WINAPI Ext_DWriteCreateFactory(
 	IN	DWRITE_FACTORY_TYPE	factoryType,
 	IN	REFIID              iid,
@@ -107,20 +124,11 @@ KXDWAPI HRESULT WINAPI Ext_DWriteCreateFactory(
 		return DWriteCreateFactory(factoryType, iid, factory);
 	} else {
 		unless (KexData->IfeoParameters.DisableAppSpecific) {
-			if (AshExeBaseNameIs(L"Zps.exe")) {
+			if (AshExeBaseNameIs(L"Zps.exe") 
+				|| AshExeBaseNameIs(L"cherrytree.exe")) {
 				return DWriteCreateFactory(factoryType, iid, factory);
 			}
 		}
-
-		IUnknown* obj;
-		HRESULT Result = DWriteCoreCreateFactory(factoryType, iid, &obj);
-
-		KEX_VTBL_MODIFICATION mod[] = {
-			{2 * sizeof(PVOID), IUnknownObj_Release},
-			{18 * sizeof(PVOID), IDWriteFactory7_CreateTextLayout}
-		};
-		KexVtblPatchInplace(obj->lpVtbl, mod, 2, FALSE, NULL);
-		*factory = obj;
-		return Result;
+		return Ext_DWriteCoreCreateFactory(factoryType, iid, factory);
 	}
 }

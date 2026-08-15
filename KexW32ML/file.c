@@ -202,6 +202,10 @@ KW32MLDECLSPEC EXTERN_C BOOLEAN KW32MLAPI SupersedeFile(
 		SafeFindClose(FindHandle);
 		SetLastError(LastError);
 
+		if (ExistingTransaction) {
+			RtlSetCurrentTransaction(ExistingTransaction);
+		}
+
 		if (LastError != ERROR_NO_MORE_FILES) {
 			return FALSE;
 		}
