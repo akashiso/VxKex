@@ -50,6 +50,9 @@
     <ClCompile Include="mfplat.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="dx12.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="kxdx.def">

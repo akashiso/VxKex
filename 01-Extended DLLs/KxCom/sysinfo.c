@@ -150,6 +150,8 @@ KXCOMAPI HRESULT STDMETHODCALLTYPE SmbiosInformationStatics_get_SerialNumber(
 	IEnumWbemClassObject_Release(wbemEnum);
 	if (FAILED(hr)) 
 		return hr;
+	if (hr == S_FALSE || count == 0)
+		return HRESULT_FROM_WIN32(ERROR_NOT_FOUND);
 
 	VARIANT serial;
 	hr = IWbemClassObject_Get(wbemClass, L"SerialNumber", 0, &serial, NULL, NULL);
@@ -158,8 +160,11 @@ KXCOMAPI HRESULT STDMETHODCALLTYPE SmbiosInformationStatics_get_SerialNumber(
 		return hr;
 
 	BSTR sSerial = V_BSTR(&serial);
+
+	hr = WindowsCreateString(sSerial, (ULONG)wcslen(sSerial), out);
 	VariantClear(&serial);
-	return  WindowsCreateString(sSerial, (ULONG)wcslen(sSerial), out);
+
+	return hr;
 }
 
 ISmbiosInformationStaticsVtbl CSmbiosInformationStaticsVtbl = {

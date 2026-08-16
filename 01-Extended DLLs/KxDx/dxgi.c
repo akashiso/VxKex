@@ -56,6 +56,35 @@ HRESULT STDMETHODCALLTYPE IIDXGIFactory2_CreateSwapChain(
 		return This->lpVtbl->CreateSwapChain(This->Thi, pDevice, &descCopy, ppSwapChain);
 	}
 
+	ID3D12CommandQueue* pQueue = NULL;
+	if (SUCCEEDED(IUnknown_QueryInterface(pDevice, &IID_ID3D12CommandQueue, &pQueue))) {
+		IUnknown_Release(pDevice);
+
+		if (ppSwapChain == NULL)
+			return E_POINTER;
+
+		HWND hWnd = pDesc->OutputWindow;
+
+		DXGI_SWAP_CHAIN_DESC1 desc1 = { 0 };
+		desc1.Width = pDesc->BufferDesc.Width;
+		desc1.Height = pDesc->BufferDesc.Height;
+		desc1.Format = pDesc->BufferDesc.Format;
+		desc1.Stereo = FALSE;
+		desc1.SampleDesc = pDesc->SampleDesc;
+		desc1.BufferUsage = pDesc->BufferUsage;
+		desc1.BufferCount = pDesc->BufferCount;
+		desc1.Scaling = DXGI_SCALING_STRETCH;
+		desc1.SwapEffect = DXGI_SWAP_EFFECT_DISCARD;
+		desc1.AlphaMode = DXGI_ALPHA_MODE_UNSPECIFIED;
+		desc1.Flags = pDesc->Flags;
+
+		IID3D12Swapchain* swapchain;
+		HRESULT Result = CreateIID3D12Swapchain(pQueue, &desc1, hWnd, (IDXGIFactory*)This->Thi, &swapchain);
+
+		*ppSwapChain = (IDXGISwapChain*)swapchain;
+		return Result;
+	}
+
 	return This->lpVtbl->CreateSwapChain(This->Thi, pDevice, pDesc, ppSwapChain);
 }
 
@@ -104,6 +133,21 @@ HRESULT STDMETHODCALLTYPE IIDXGIFactory2_CreateSwapChainForHwnd(
 			descCopy.Scaling = DXGI_SCALING_ASPECT_RATIO_STRETCH;
 
 		pDesc = &descCopy;
+	}
+
+	ID3D12CommandQueue* pQueue = NULL;
+	if (SUCCEEDED(IUnknown_QueryInterface(pDevice, &IID_ID3D12CommandQueue, &pQueue))) 
+	{
+		IUnknown_Release(pDevice);
+
+		if (ppSwapChain == NULL)
+			return E_POINTER;
+
+		IID3D12Swapchain* swapchain;
+		Result = CreateIID3D12Swapchain(pQueue, pDesc, hWnd, (IDXGIFactory*)This->Thi, &swapchain);
+
+		*ppSwapChain = (IDXGISwapChain*)swapchain;
+		return Result;
 	}
 
 	Result = This->lpVtbl->CreateSwapChainForHwnd(This->Thi, pDevice, hWnd, pDesc,

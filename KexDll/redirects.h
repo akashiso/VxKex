@@ -39,7 +39,7 @@ STATIC CONST UNICODE_STRING DllRedirects[][2] = {
 	DLL_REDIRECT("d2d1",										"kxd2"				)
 
 	DLL_REDIRECT("d3d11",										"kxdx"				)
-	DLL_REDIRECT("d3d12",										"kxdx"				)
+	//DLL_REDIRECT("d3d12",										"kxdx"				)
 	DLL_REDIRECT("dcomp",										"kxdx"				)
 	DLL_REDIRECT("dxgi",										"kxdx"				)
 	DLL_REDIRECT("MFPlat",										"kxdx"				)

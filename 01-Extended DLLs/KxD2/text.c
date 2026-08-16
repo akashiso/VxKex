@@ -709,11 +709,12 @@ IID2D1TextRenderer* CreateTextRenderer(void* fact)
 		return NULL;
 	}
 
+	IUnknown_Release(dwfact);
+
 	IID2D1TextRenderer* r = (IID2D1TextRenderer*)CoTaskMemAlloc(sizeof(IID2D1TextRenderer));
 	if (r == NULL)
 	{
 		IUnknown_Release(params);
-		IUnknown_Release(dwfact);
 		return NULL;
 	}
 
@@ -721,8 +722,6 @@ IID2D1TextRenderer* CreateTextRenderer(void* fact)
 	r->RefCount = 1;
 	r->factory = (ID2D1Factory*)fact;
 	r->defaultParams = params;
-
-	IUnknown_Release(dwfact);
 
 	return r;
 }

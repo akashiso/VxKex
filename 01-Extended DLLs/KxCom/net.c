@@ -6,7 +6,6 @@
 
 //
 // This is a good boilerplate for the fucking WinRT interface with many version.
-// God knows why they seperated the function table.
 //
 
 //

@@ -3,7 +3,6 @@
 #define WIN32_LEAN_AND_MEAN
 #define NOGDICAPMASKS
 #define NOVIRTUALKEYCODES
-#define NOWINSTYLES
 #define NOSYSMETRICS
 #define NOMENUS
 #define NOICONS
@@ -15,7 +14,6 @@
 #define NOCLIPBOARD
 #define NOCOLOR
 #define NODRAWTEXT
-#define NOGDI
 #define NOKERNEL
 #define NONLS
 #define NOMB
@@ -24,7 +22,6 @@
 #define NOSCROLL
 #define NOTEXTMETRIC
 #define NOWH
-#define NOWINOFFSETS
 #define NOCOMM
 #define NOKANJI
 #define NOHELP
