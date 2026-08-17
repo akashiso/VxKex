@@ -281,6 +281,8 @@ BOOL WINAPI DllMain(
 			AshPerformChromiumDetectionFromModuleExports(Peb->ImageBaseAddress);
 		}
 
+		AshSelectD3D12Implementation();
+
 		//
 		// Perform version spoofing, if required.
 		//

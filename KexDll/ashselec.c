@@ -73,3 +73,17 @@ NTSTATUS AshSelectDWriteImplementation(
 
 	return AshpAddUpdateRemoveDllRewriteEntry(&DllName, &RewrittenDllName);
 }
+
+NTSTATUS AshSelectD3D12Implementation()
+{
+	UNICODE_STRING DllName;
+	UNICODE_STRING RewrittenDllName;
+
+	if (KexIs64BitBuild)
+		return STATUS_SUCCESS;
+
+	RtlInitConstantUnicodeString(&DllName, L"d3d12");
+	RtlInitConstantUnicodeString(&RewrittenDllName, L"kxdx");
+
+	return AshpAddUpdateRemoveDllRewriteEntry(&DllName, &RewrittenDllName);
+}

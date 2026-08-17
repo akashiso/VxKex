@@ -57,8 +57,9 @@ HRESULT STDMETHODCALLTYPE IIDXGIFactory2_CreateSwapChain(
 	}
 
 	ID3D12CommandQueue* pQueue = NULL;
-	if (SUCCEEDED(IUnknown_QueryInterface(pDevice, &IID_ID3D12CommandQueue, &pQueue))) {
-		IUnknown_Release(pDevice);
+	if (SUCCEEDED(IUnknown_QueryInterface(pDevice, &IID_ID3D12CommandQueue, &pQueue)))
+	{
+		IUnknown_Release((IUnknown*)pQueue);
 
 		if (ppSwapChain == NULL)
 			return E_POINTER;
@@ -138,7 +139,7 @@ HRESULT STDMETHODCALLTYPE IIDXGIFactory2_CreateSwapChainForHwnd(
 	ID3D12CommandQueue* pQueue = NULL;
 	if (SUCCEEDED(IUnknown_QueryInterface(pDevice, &IID_ID3D12CommandQueue, &pQueue))) 
 	{
-		IUnknown_Release(pDevice);
+		IUnknown_Release((IUnknown*)pQueue);
 
 		if (ppSwapChain == NULL)
 			return E_POINTER;

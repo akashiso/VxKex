@@ -1,0 +1,43 @@
+Patches For x64/d12ms.dll
+
+Base : 0x180000000, amd64, .text (START = 0x180001000)
+
+Before:
+...
+ 1800061B7 | FF 15 CB 10 14 00    |   call    cs:ReleaseSRWLockExclusive
+ 1800061BD | 4C 8B AC 24 90 02... |   mov     r13, [rsp+270h+arg_10]
+ 1800061C5 | E9 B3 01 00 00       |   jmp     loc_18000637D
+ 1800061CA |                      |
+ 1800061CA |                      | loc_1800061CA:
+ 1800061CA | 33 DB                |   xor     ebx, ebx
+ 1800061CC | 48 C7 44 24 30 1C... |   mov     qword ptr [rsp+270h+VersionInformation.dwOSVersionInfoSize], 11Ch
+ 1800061D5 | 33 D2                |   xor     edx, edx; a2
+ 1800061D7 | 48 89 5C 24 38       |   mov     qword ptr [rsp+270h+VersionInformation.dwMinorVersion], rbx
+ 1800061DC | 41 B8 00 01 00 00    |   mov     r8d, 100h; n0x80
+ 1800061E2 | 89 5C 24 40          |   mov     [rsp+270h+VersionInformation.dwPlatformId], ebx
+ 1800061E6 | 48 8D 4C 24 44       |   lea     rcx, [rsp+270h+VersionInformation.szCSDVersion]; a1
+ 1800061EB | E8 50 88 0E 00       |   call    sub_1800EEA40
+...
+
+After:
+...
+ 1800061B7 | FF 15 CB 10 14 00    |   call    cs:ReleaseSRWLockExclusive
+ 1800061BD | 4C 8B AC 24 90 02... |   mov     r13, [rsp+270h+arg_10]
+ 1800061C5 | E9 B3 01 00 00       |   jmp     loc_18000637D
+ 1800061CA |                      |
+ 1800061CA |                      | loc_1800061CA:
+ 1800061CA | 33 DB                |   xor     ebx, ebx
+ 1800061CC | E9 4B 01 00 00       |   jmp     loc_18000631C
+ 1800061D1 | 90                   |   nop
+ 1800061D2 | 90                   |   nop
+ 1800061D3 | 90                   |   nop
+ 1800061D4 | 90                   |   nop
+ 1800061D5 | 33 D2                |   xor     edx, edx; a2
+ 1800061D7 | 48 89 5C 24 38       |   mov     qword ptr [rsp+270h+VersionInformation.dwMinorVersion], rbx
+ 1800061DC | 41 B8 00 01 00 00    |   mov     r8d, 100h; n0x80
+ 1800061E2 | 89 5C 24 40          |   mov     [rsp+270h+VersionInformation.dwPlatformId], ebx
+ 1800061E6 | 48 8D 4C 24 44       |   lea     rcx, [rsp+270h+VersionInformation.szCSDVersion]; a1
+ 1800061EB | E8 50 88 0E 00       |   call    sub_1800EEA40
+...
+
+"0x1800061CC: mov qword ptr [rsp+270h+VersionInformation.dwOSVersionInfoSize], 11Ch" has been modified to "0x1800061CC: jmp loc_18000631C" for skipping the Windows version checks.

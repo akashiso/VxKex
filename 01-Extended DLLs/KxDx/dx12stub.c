@@ -18,6 +18,8 @@ KXDXAPI HRESULT WINAPI D3D12CreateDevice(
 		*Device = NULL;
 	}
 
+	KexLogWarningEvent(L"Stub %s called", __FUNCTIONW__);
+
 	return DXGI_ERROR_UNSUPPORTED;
 }
 

@@ -183,7 +183,7 @@ void Cleanup()
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow)
 {
-    Sleep(1000 * 15);
+    // Sleep(1000 * 15);
 
     if (!InitWindow(hInstance, nCmdShow))
         return 1;

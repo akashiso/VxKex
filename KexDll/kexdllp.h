@@ -132,6 +132,9 @@ NTSTATUS AshSetIsCavalryProcess(
 NTSTATUS AshSelectDWriteImplementation(
 	IN	KEX_DWRITE_IMPLEMENTATION	Implementation);
 
+NTSTATUS AshSelectD3D12Implementation(
+	VOID);
+
 //
 // avrf.c
 //

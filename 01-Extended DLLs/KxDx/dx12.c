@@ -1,6 +1,10 @@
 #include "buildcfg.h"
 #include "kxdxp.h"
 
+//
+// Roti-Poulet/DirectX12On7
+//
+
 VOID IID3D12Interop_WaitForGPUIdle(IID3D12Interop* interop, DWORD timeoutMs)
 {
 	UINT64 target;
@@ -12,7 +16,9 @@ VOID IID3D12Interop_WaitForGPUIdle(IID3D12Interop* interop, DWORD timeoutMs)
 	target = ++interop->fenceValue;
 	hr = interop->pQueue->lpVtbl->Signal(interop->pQueue, interop->pFence, target);
 	if (FAILED(hr)) {
-		KexLogWarningEvent(L"Signal failed 0x%08X. proceeding without GPU sync", hr);
+		KexLogWarningEvent(L"Signal failed 0x%08X : %s.\r\n"
+						   L"Proceeding without GPU sync.",
+						   hr, Win32ErrorAsString(hr));
 		return;
 	}
 
@@ -20,12 +26,14 @@ VOID IID3D12Interop_WaitForGPUIdle(IID3D12Interop* interop, DWORD timeoutMs)
 		hr = interop->pFence->lpVtbl->SetEventOnCompletion(interop->pFence, target, interop->hFenceEvent);
 
 		if (FAILED(hr)) {
-			KexLogWarningEvent(L"SetEventOnCompletion failed 0x%08X. proceeding without GPU sync", hr);
+			KexLogWarningEvent(L"SetEventOnCompletion failed 0x%08X : %s.\r\n"
+							   L"Proceeding without GPU sync.",
+							   hr, Win32ErrorAsString(hr));
 			return;
 		}
 		if (WaitForSingleObject(interop->hFenceEvent, timeoutMs) != WAIT_OBJECT_0) {
-			KexLogWarningEvent(L"Timed out after %ums waiting for fence=%llu "
-							   L"(device may already be removed). proceeding anyway",
+			KexLogWarningEvent(L"Timed out after %ums waiting for fence : %llu.\r\n"
+							   L"Device may already be removed.",
 							   timeoutMs, (unsigned long long)target);
 			return;
 		}
@@ -77,6 +85,9 @@ HRESULT InitializeID3D12Interop(
 	ID3D12CommandList* pCmdList = NULL;
 	ID3D12Device* pDevice = NULL;
 
+	if (!pDesc || pDesc->BufferCount == 0 || pDesc->BufferCount > D3D12_INTEROP_MAX_BUFFERS)
+		return E_INVALIDARG;
+
 	HRESULT hr;
 
 	hr = pQueue->lpVtbl->Parent.GetDevice((ID3D12DeviceChild*)pQueue, &IID_ID3D12Device, &pDevice);
@@ -121,7 +132,7 @@ HRESULT InitializeID3D12Interop(
 		interop->Height = interop->Height == 0 ? height : interop->Height;
 	}
 
-	hr = pDevice->lpVtbl->CreateFence(pDevice, 0, 0, &IID_ID3D12Fence, &interop->pFence);
+	hr = pDevice->lpVtbl->CreateFence(pDevice, 0, D3D12_FENCE_FLAG_NONE, &IID_ID3D12Fence, &interop->pFence);
 	if (FAILED(hr)) goto Failed;
 
 	interop->fenceValue = 0;
@@ -171,6 +182,11 @@ Failed:
 	if (pDevice)
 		IUnknown_Release((IUnknown*)pDevice);
 
+	interop->pDevice = NULL;
+	interop->pCmdAllocator = NULL;
+	interop->pCmdList = NULL;
+	interop->pDownlevel = NULL;
+
 	DestroyID3D12Interop(interop);
 
 	return hr;
@@ -178,8 +194,8 @@ Failed:
 
 HRESULT IID3D12Interop_GetBuffer(IID3D12Interop* interop, UINT Buffer, REFIID riid, void** pp)
 {
-	if (!interop)
-		return E_NOTIMPL;
+	if (pp == NULL)
+		return E_POINTER;
 
 	if (Buffer >= interop->BufferCount)
 		return DXGI_ERROR_INVALID_CALL;
@@ -433,7 +449,9 @@ HRESULT STDMETHODCALLTYPE IID3D12Swapchain_GetPrivateData(
 		return DXGI_ERROR_MORE_DATA;
 
 	if (prev->IsInterface) {
+		IUnknown_AddRef((IUnknown*)prev->Data);
 		*((PPVOID)data) = prev->Data;
+
 		return S_OK;
 	}
 
@@ -1006,10 +1024,17 @@ HRESULT CreateIID3D12Swapchain(
 	swapchain->lpVtbl = IID3D12SwapchainVtbl;
 	swapchain->RefCount = 1;
 
-	*out = swapchain;
 	HRESULT hr = InitializeID3D12Interop(pQueue, pDesc, hwnd, &swapchain->interop);
-	if (FAILED(hr))
-		CoTaskMemFree(swapchain);
 
+	if (FAILED(hr)) {
+		KexLogErrorEvent(L"Failed to initialize DXGISwapChain for D3D12."
+						 L"HRESULT error code: 0x%08lx: %s",
+						 hr, Win32ErrorAsString(hr));
+
+		CoTaskMemFree(swapchain);
+		swapchain = NULL;
+	}
+
+	*out = swapchain;
 	return hr;
 }
