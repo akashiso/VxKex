@@ -26,6 +26,7 @@
 //     vxiiduu              05-Jan-2023  Convert to user friendly NTSTATUS.
 //     vxiiduu              23-Feb-2024  Remove support for advanced logging.
 //     vxiiduu              23-Feb-2024  Remove unneeded debug logging
+//     vxiiduu              28-Jun-2026  Support KEX_DllRewriteEntries.
 //
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -279,6 +280,25 @@ BOOL WINAPI DllMain(
 
 			// APPSPECIFICHACK: Detect Chromium based on EXE exports.
 			AshPerformChromiumDetectionFromModuleExports(Peb->ImageBaseAddress);
+		}
+
+		//
+		// If the user has specified any modifications to the DLL rewrite map, apply
+		// them here, after ASH has made its changes but before rewriting the EXE
+		// imports.
+		//
+
+		if (KexData->IfeoParameters.DllRewriteEntries[0] != '\0') {
+			Status = KexApplyUserDllRewrite(KexData->IfeoParameters.DllRewriteEntries);
+			ASSERT(NT_SUCCESS(Status) || Status == STATUS_INVALID_PARAMETER);
+
+			if (Status == STATUS_INVALID_PARAMETER) {
+				KexMessageBox(
+					MB_ICONEXCLAMATION | MB_OK,
+					L"Application Error (VxKex)",
+					L"The registry setting \"KEX_DllRewriteEntries\" has invalid syntax. "
+					L"Some or all of the rewrite entries may not have been applied.");
+			}
 		}
 
 		AshSelectD3D12Implementation();

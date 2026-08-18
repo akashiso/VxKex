@@ -48,6 +48,8 @@ KXCFGDECLSPEC BOOLEAN KXCFGAPI KxCfgGetConfiguration(
 	ULONG KEX_DisableAppSpecific;
 	ULONG KEX_WinVerSpoof;
 	ULONG KEX_StrongVersionSpoof;
+	ULONG KEX_TlsForceEnabledProtocols;
+	ULONG KEX_TlsForceDisabledProtocols;
 
 	ASSERT (ExeFullPath != NULL);
 	ASSERT (ExeFullPath[0] != '\0');
@@ -91,6 +93,14 @@ KXCFGDECLSPEC BOOLEAN KXCFGAPI KxCfgGetConfiguration(
 	RegReadI32(KeyHandle, NULL, L"KEX_DisableAppSpecific", &KEX_DisableAppSpecific);
 	RegReadI32(KeyHandle, NULL, L"KEX_WinVerSpoof", &KEX_WinVerSpoof);
 	RegReadI32(KeyHandle, NULL, L"KEX_StrongVersionSpoof", &KEX_StrongVersionSpoof);
+	RegReadI32(KeyHandle, NULL, L"KEX_TlsForceEnabledProtocols", &KEX_TlsForceEnabledProtocols);
+	RegReadI32(KeyHandle, NULL, L"KEX_TlsForceDisabledProtocols", &KEX_TlsForceDisabledProtocols);
+
+	RegReadString(KeyHandle, NULL, L"KEX_DllRewriteEntries", Configuration->DllRewriteEntries, 
+				  ARRAYSIZE(Configuration->DllRewriteEntries));
+
+	RegReadString(KeyHandle, NULL, L"KEX_DllRewriteExemptions", Configuration->DllRewriteExemptions, 
+				  ARRAYSIZE(Configuration->DllRewriteExemptions));
 
 	RegCloseKey(KeyHandle);
 
@@ -112,6 +122,8 @@ KXCFGDECLSPEC BOOLEAN KXCFGAPI KxCfgGetConfiguration(
 	Configuration->DisableAppSpecificHacks = !!KEX_DisableAppSpecific;
 	Configuration->WinVerSpoof = (KEX_WIN_VER_SPOOF) KEX_WinVerSpoof;
 	Configuration->StrongSpoofOptions = KEX_StrongVersionSpoof;
+	Configuration->TlsForceEnabledProtocols = KEX_TlsForceEnabledProtocols;
+	Configuration->TlsForceDisabledProtocols = KEX_TlsForceDisabledProtocols;
 
 	return TRUE;
 }

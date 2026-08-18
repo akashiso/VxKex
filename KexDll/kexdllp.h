@@ -192,6 +192,13 @@ KEXAPI BOOLEAN NTAPI KexShouldRewriteDynamicImportsOfDll(
 BOOL IsCurrentProcessInternetExplorer(
 	VOID);
 
+NTSTATUS KexAddUpdateRemoveDllRewriteEntry(
+	IN	PCUNICODE_STRING	DllName,
+	IN	PCUNICODE_STRING	RewrittenDllName OPTIONAL);
+
+NTSTATUS KexApplyUserDllRewrite(
+	IN	PWSTR	RewriteSpec);
+
 //
 // initapc.c
 //

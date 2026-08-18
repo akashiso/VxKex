@@ -345,14 +345,17 @@ typedef enum _KEX_WIN_VER_SPOOF {
 // processes during propagation. (See propagte.c.)
 //
 
+typedef WCHAR IFEO_PATH_BUFFER[MAX_PATH];
+
 typedef struct _KEX_IFEO_PARAMETERS {
 	ULONG						DisableForChild;
 	ULONG						DisableAppSpecific;
 	KEX_WIN_VER_SPOOF			WinVerSpoof;
 	ULONG						StrongVersionSpoof;				// KEX_STRONGSPOOF_*
-	ULONG						DisableConsoleEnhancements;		// boolean
 	ULONG						TlsForceEnabledProtocols;		// SP_PROT_*
 	ULONG						TlsForceDisabledProtocols;		// SP_PROT_*
+	IFEO_PATH_BUFFER			DllRewriteEntries;
+	IFEO_PATH_BUFFER			DllRewriteExemptions;
 } TYPEDEF_TYPE_NAME(KEX_IFEO_PARAMETERS);
 
 //

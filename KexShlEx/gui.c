@@ -19,6 +19,7 @@
 // Revision History:
 //
 //     vxiiduu              08-Feb-2024  Initial creation.
+//     vxiiduu              24-Jun-2026  Add "Open in Registry Editor" button.
 //
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -98,6 +99,8 @@ INT_PTR CALLBACK DialogProc(
 			ExeFullPath,
 			&ProgramConfiguration);
 
+		EnableWindow(GetDlgItem(Window, IDOPENREGEDIT), Success);
+
 		if (Success) {
 			CheckDlgButton(Window, IDUSEVXKEX,				!!ProgramConfiguration.Enabled);
 
@@ -174,7 +177,22 @@ INT_PTR CALLBACK DialogProc(
 
 		SetFocus(GetDlgItem(Window, IDUSEVXKEX));
 		return FALSE;
-	} else if (Message == WM_COMMAND) {
+	}
+	else if (Message == WM_COMMAND && LOWORD(WParam) == IDOPENREGEDIT) {
+		if (PropSheetData) {
+			BOOLEAN Success;
+
+			// If we're using the KexCfg scheduled task to set configuration (i.e. if
+			// user account control is enabled), then the detection code that checks
+			// whether the IFEO key still exists after an OK/Apply might not work due
+			// to the asynchronous nature of the operation.
+			// So if OpenIfeoRegKey fails we will just disable the button.
+
+			Success = OpenIfeoRegKey(Window, PropSheetData->ExeFullPath);
+			EnableWindow(GetDlgItem(Window, IDOPENREGEDIT), Success);
+		}
+	}
+	else if (Message == WM_COMMAND) {
 		if (LOWORD(WParam) == IDSPOOFVERSIONCHECK) {
 			BOOLEAN VersionSpoofEnabled;
 
@@ -224,8 +242,29 @@ INT_PTR CALLBACK DialogProc(
 		//
 
 		if (PropSheetData) {
-			KxCfgSetConfiguration(PropSheetData->ExeFullPath, &ProgramConfiguration, NULL);
+			BOOLEAN RegKeyExists;
+
+			KxCfgSetConfiguration(
+				PropSheetData->ExeFullPath,
+				&ProgramConfiguration,
+				NULL);
+
 			PropSheetData->SettingsChanged = FALSE;
+
+			if (KexRtlIsZeroMemory(&ProgramConfiguration, sizeof(ProgramConfiguration))) {
+				// If we had an all-zero configuration structure, then there won't be
+				// any VxKex configuration for this program.
+				RegKeyExists = FALSE;
+			}
+			else {
+				// Otherwise, there is likely to be VxKex configuration for this program.
+				// It isn't guaranteed, but there is fallback code to avoid actually opening
+				// Regedit if the user clicks the button and the reg key doesn't actually
+				// exist (e.g. if KxCfgHlp/KexCfg failed for some reason).
+				RegKeyExists = TRUE;
+			}
+
+			EnableWindow(GetDlgItem(Window, IDOPENREGEDIT), RegKeyExists);
 		}
 	} else if (Message == WM_NOTIFY && WParam == IDREPORTBUG) {
 		ULONG NotificationCode;

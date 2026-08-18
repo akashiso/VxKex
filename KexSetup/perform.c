@@ -552,45 +552,38 @@ BOOLEAN CALLBACK KexSetupConfigurationEnumerationCallback(
 
 		return TRUE;
 	}
-	
+
 	ASSERT (!PathIsRelative(ExeFullPathOrBaseName));
 
 	if (PreserveConfig) {
-		KXCFG_PROGRAM_CONFIGURATION Configuration;
+		//
+		// Save VxKex configuration for this program to the registry if we're supposed
+		// to preserve VxKex settings.
+		// This will be restored the next time VxKex is installed.
+		//
 
-		Success = KxCfgGetConfiguration(ExeFullPathOrBaseName, &Configuration);
-		if (!Success) {
-			RtlRaiseStatus(STATUS_KEXSETUP_FAILURE);
-		}
-
-		if (Configuration.Enabled) {
-			Configuration.Enabled = FALSE;
-
-			Success = KxCfgSetConfiguration(
-				ExeFullPathOrBaseName,
-				&Configuration,
-				KexSetupTransactionHandle);
-
-			if (!Success) {
-				ErrorBoxF(
-					L"Setup was unable to disable VxKex for \"%s\". %s",
-					ExeFullPathOrBaseName, GetLastErrorAsString());
-
-				RtlRaiseStatus(STATUS_KEXSETUP_FAILURE);
-			}
-		}
-	} else {
-		Success = KxCfgDeleteConfiguration(
+		Success = KxCfgPreserveConfiguration(
 			ExeFullPathOrBaseName,
 			KexSetupTransactionHandle);
-		
-		if (!Success) {
-			ErrorBoxF(
-				L"Setup was unable to delete VxKex configuration for \"%s\". %s",
-				ExeFullPathOrBaseName, GetLastErrorAsString());
 
-			RtlRaiseStatus(STATUS_KEXSETUP_FAILURE);
+		ASSERT (Success);
+
+		if (!Success) {
+			// continue enumeration
+			return TRUE;
 		}
+	}
+
+	Success = KxCfgDeleteConfiguration(
+		ExeFullPathOrBaseName,
+		KexSetupTransactionHandle);
+		
+	if (!Success) {
+		ErrorBoxF(
+			L"Setup was unable to delete VxKex configuration for \"%s\". %s",
+			ExeFullPathOrBaseName, GetLastErrorAsString());
+
+		RtlRaiseStatus(STATUS_KEXSETUP_FAILURE);
 	}
 
 	return TRUE;

@@ -84,6 +84,7 @@ EXPORTS
 	AppPolicyGetWindowingModel
 	AppXGetPackageSid
 	AppXFreeMemory
+	FindPackagesByPackageFamily
 	GetApplicationUserModelId
 	GetCurrentApplicationUserModelId
 	GetCurrentPackageFamilyName
@@ -94,6 +95,7 @@ EXPORTS
 	GetPackagePathByFullName
 	GetPackagePathByFullName2
 	GetPackagesByPackageFamily
+	GetStagedPackagePathByFullName
 	PackageFamilyNameFromFullName
 	PackageIdFromFullName
 	GetPackagePath

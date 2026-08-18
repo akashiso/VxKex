@@ -11,39 +11,4 @@
 #define IDDISABLEAPPSPECIFIC	116
 
 #define IDREPORTBUG				130
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+#define IDOPENREGEDIT			131

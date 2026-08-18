@@ -26,7 +26,7 @@ BEGIN
 		}
 		BLOCK "040404E4" {
 			VALUE "LegalCopyright",				KEX_WEB_STR
-			VALUE "FileDescription",			"VxKex ?配置殼層擴展"
+			VALUE "FileDescription",			"VxKex 配置殼層擴展"
 			VALUE "FileVersion",				KEX_VERSION_STR
 			VALUE "InternalName",				"KexShlEx"
 			VALUE "OriginalFilename",			"KEXSHLEX.DLL"
@@ -61,6 +61,8 @@ BEGIN
 	
 	CONTROL	"如果应用程序仍然无法使用兼容层正常运行，请考虑<A>报告错误</A>。",
 			IDREPORTBUG, "Link Window", WS_TABSTOP, 7, PROP_MED_CYDLG - 31, PROP_MED_CXDLG - 14, 31
+
+	PUSHBUTTON		"在注册表编辑器中打开(&I)", IDOPENREGEDIT, 7, PROP_MED_CYDLG + 14, 120, 14
 END
 
 
@@ -86,6 +88,8 @@ BEGIN
 	
 	CONTROL	"如果應用程式仍然無法使用相容層正常執行，請考慮<A>報告錯誤</A>。",
 			IDREPORTBUG, "Link Window", WS_TABSTOP, 7, PROP_MED_CYDLG - 31, PROP_MED_CXDLG - 14, 31
+
+	PUSHBUTTON		"在註冊表編輯器中打開(&I)", IDOPENREGEDIT, 7, PROP_MED_CYDLG + 14, 120, 14
 END
 
 
@@ -111,4 +115,6 @@ BEGIN
 
 	CONTROL	"If an application still does not function properly using the compatibility layer, consider <A>reporting a bug</A>.",
 			IDREPORTBUG, "Link Window", WS_TABSTOP, 7, PROP_MED_CYDLG - 31, PROP_MED_CXDLG - 14, 31
+
+	PUSHBUTTON		"Open &in Registry Editor", IDOPENREGEDIT, 7, PROP_MED_CYDLG + 14, 120, 14
 END

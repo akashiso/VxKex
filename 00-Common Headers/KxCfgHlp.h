@@ -50,6 +50,10 @@ typedef struct {
 	BOOLEAN				DisableAppSpecificHacks;
 	KEX_WIN_VER_SPOOF	WinVerSpoof;
 	ULONG				StrongSpoofOptions;
+	ULONG				TlsForceEnabledProtocols;		// SP_PROT_*
+	ULONG				TlsForceDisabledProtocols;		// SP_PROT_*
+	IFEO_PATH_BUFFER	DllRewriteEntries;
+	IFEO_PATH_BUFFER	DllRewriteExemptions;
 } TYPEDEF_TYPE_NAME(KXCFG_PROGRAM_CONFIGURATION);
 
 //
@@ -149,6 +153,13 @@ KXCFGDECLSPEC BOOLEAN KXCFGAPI KxCfgQueryLegacyKxSChanlSsp(
 
 KXCFGDECLSPEC BOOLEAN KXCFGAPI KxCfgEnableLegacyKxSChanlSsp(
 	IN	BOOLEAN	Enable,
+	IN	HANDLE	TransactionHandle OPTIONAL);
+
+KXCFGDECLSPEC BOOLEAN KXCFGAPI KxCfgPreserveConfiguration(
+	IN	PCWSTR	ExeFullPath,
+	IN	HANDLE	TransactionHandle OPTIONAL);
+
+KXCFGDECLSPEC BOOLEAN KXCFGAPI KxCfgRestorePreservedConfiguration(
 	IN	HANDLE	TransactionHandle OPTIONAL);
 
 #ifdef KXCFGDECLSPEC

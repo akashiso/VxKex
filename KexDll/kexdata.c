@@ -342,6 +342,38 @@ STATIC NTSTATUS KexpInitializeIfeoParameters(
 		sizeof(IfeoParameters->StrongVersionSpoof),
 		NULL);
 
+	LdrQueryImageFileKeyOption(
+		IfeoKeyHandle,
+		L"KEX_TlsForceEnabledProtocols",
+		REG_DWORD,
+		&IfeoParameters->TlsForceEnabledProtocols,
+		sizeof(IfeoParameters->TlsForceEnabledProtocols),
+		NULL);
+
+	LdrQueryImageFileKeyOption(
+		IfeoKeyHandle,
+		L"KEX_TlsForceDisabledProtocols",
+		REG_SZ,
+		&IfeoParameters->TlsForceDisabledProtocols,
+		sizeof(IfeoParameters->TlsForceDisabledProtocols),
+		NULL);
+
+	LdrQueryImageFileKeyOption(
+		IfeoKeyHandle,
+		L"KEX_DllRewriteEntries",
+		REG_SZ,
+		&IfeoParameters->DllRewriteEntries,
+		sizeof(IfeoParameters->DllRewriteEntries),
+		NULL);
+
+	LdrQueryImageFileKeyOption(
+		IfeoKeyHandle,
+		L"KEX_DllRewriteExemptions",
+		REG_SZ,
+		&IfeoParameters->DllRewriteExemptions,
+		sizeof(IfeoParameters->DllRewriteExemptions),
+		NULL);
+
 	SafeClose(IfeoKeyHandle);
 
 Exit:

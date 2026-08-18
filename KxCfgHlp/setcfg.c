@@ -52,6 +52,11 @@ KXCFGDECLSPEC BOOLEAN KXCFGAPI KxCfgSetConfiguration(
 	ULONG KEX_DisableAppSpecific;
 	ULONG KEX_WinVerSpoof;
 	ULONG KEX_StrongVersionSpoof;
+	ULONG KEX_TlsForceEnabledProtocols;
+	ULONG KEX_TlsForceDisabledProtocols;
+
+	PCWSTR KEX_DllRewriteEntries;
+	PCWSTR KEX_DllRewriteExemptions;
 
 	ASSERT (ExeFullPath != NULL);
 	ASSERT (ExeFullPath[0] != '\0');
@@ -75,12 +80,7 @@ KXCFGDECLSPEC BOOLEAN KXCFGAPI KxCfgSetConfiguration(
 	// of all zeroes means deleting the VxKex configuration for a program.
 	//
 
-	if (Configuration->Enabled == FALSE &&
-		Configuration->DisableForChild == FALSE &&
-		Configuration->DisableAppSpecificHacks == FALSE &&
-		Configuration->WinVerSpoof == WinVerSpoofNone &&
-		Configuration->StrongSpoofOptions == 0) {
-
+	if (KexRtlIsZeroMemory(Configuration, sizeof(*Configuration))) {
 		return KxCfgDeleteConfiguration(ExeFullPath, TransactionHandle);
 	}
 
@@ -195,10 +195,15 @@ KXCFGDECLSPEC BOOLEAN KXCFGAPI KxCfgSetConfiguration(
 		VerifierFlags = 0x80000000;
 	}
 
-	KEX_DisableForChild		= Configuration->DisableForChild;
-	KEX_DisableAppSpecific	= Configuration->DisableAppSpecificHacks;
-	KEX_WinVerSpoof			= Configuration->WinVerSpoof;
-	KEX_StrongVersionSpoof	= Configuration->StrongSpoofOptions;
+	KEX_DisableForChild				= Configuration->DisableForChild;
+	KEX_DisableAppSpecific			= Configuration->DisableAppSpecificHacks;
+	KEX_WinVerSpoof					= Configuration->WinVerSpoof;
+	KEX_StrongVersionSpoof			= Configuration->StrongSpoofOptions;
+	KEX_TlsForceEnabledProtocols	= Configuration->TlsForceEnabledProtocols;
+	KEX_TlsForceDisabledProtocols	= Configuration->TlsForceDisabledProtocols;
+
+	KEX_DllRewriteEntries			= Configuration->DllRewriteEntries;
+	KEX_DllRewriteExemptions		= Configuration->DllRewriteExemptions;
 
 	try {
 		ErrorCode = RegWriteI32(KeyHandle, NULL, L"KEX_DisableForChild", KEX_DisableForChild);
@@ -217,6 +222,26 @@ KXCFGDECLSPEC BOOLEAN KXCFGAPI KxCfgSetConfiguration(
 		}
 
 		ErrorCode = RegWriteI32(KeyHandle, NULL, L"KEX_StrongVersionSpoof", KEX_StrongVersionSpoof);
+		if (ErrorCode) {
+			return FALSE;
+		}
+
+		ErrorCode = RegWriteI32(KeyHandle, NULL, L"KEX_TlsForceEnabledProtocols", KEX_TlsForceEnabledProtocols);
+		if (ErrorCode) {
+			return FALSE;
+		}
+
+		ErrorCode = RegWriteI32(KeyHandle, NULL, L"KEX_TlsForceDisabledProtocols", KEX_TlsForceDisabledProtocols);
+		if (ErrorCode) {
+			return FALSE;
+		}
+
+		ErrorCode = RegWriteString(KeyHandle, NULL, L"KEX_DllRewriteEntries", KEX_DllRewriteEntries);
+		if (ErrorCode) {
+			return FALSE;
+		}
+
+		ErrorCode = RegWriteString(KeyHandle, NULL, L"KEX_DllRewriteExemptions", KEX_DllRewriteExemptions);
 		if (ErrorCode) {
 			return FALSE;
 		}

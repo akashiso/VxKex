@@ -583,6 +583,91 @@ KEXAPI BOOLEAN NTAPI KexIsRewriteExemptedDll(
 		}
 	}
 
+	//
+	// Allow the user to specify his own rewrite-exempted DLLs.
+	// This is the support for the KEX_DllRewriteExemptions IFEO option.
+	//
+
+	if (KexData->IfeoParameters.DllRewriteExemptions[0] != '\0') {
+		STATIC UNICODE_STRING UserSpecifiedRewriteExemptedDlls[256];
+		STATIC ULONG NumberOfUserSpecifiedRewriteExemptedDlls = 0;
+		STATIC BOOLEAN UserSpecifiedRewriteExemptedDllsInitialized = FALSE;
+		ULONG Index;
+
+		//
+		// We won't worry about thread safety for this one-time initialization
+		// because it's idempotent (i.e. running multiple times doesn't hurt).
+		//
+
+		if (!UserSpecifiedRewriteExemptedDllsInitialized) {
+			ULONG StartIndex;
+			PWSTR Exemptions;
+			ULONG ExemptionCount;
+
+			Index = 0;
+			ExemptionCount = 0;
+			Exemptions = KexData->IfeoParameters.DllRewriteExemptions;
+
+			//
+			// Parse a bar-delimited list of DLL names.
+			//
+
+			until (Exemptions[Index] == '\0') {
+				PUNICODE_STRING Exemption;
+
+				StartIndex = Index;
+
+				// Find the next delimiter (which can either be a bar or the end of
+				// the string).
+				until (Exemptions[Index] == '|' || Exemptions[Index] == '\0') {
+					++Index;
+				}
+
+				if (Index <= StartIndex) {
+					// Zero-length entry - ignore it and move on.
+					ASSERT (Exemptions[Index] != '\0');
+					++Index;
+					continue;
+				}
+
+				if (ExemptionCount >= ARRAYSIZE(UserSpecifiedRewriteExemptedDlls)) {
+					ASSERT (("Too many user-specified rewrite exempted DLLs", FALSE));
+					break;
+				}
+
+				ASSERT ((Index - StartIndex) * sizeof(WCHAR) <= USHRT_MAX);
+
+				Exemption = &UserSpecifiedRewriteExemptedDlls[ExemptionCount];
+				Exemption->Length = (USHORT) ((Index - StartIndex) * sizeof(WCHAR));
+				Exemption->MaximumLength = Exemption->Length;
+				Exemption->Buffer = &Exemptions[StartIndex];
+				ASSERT (VALID_UNICODE_STRING(Exemption));
+
+				if (Exemptions[Index] == '|') {
+					// skip past the delimiter
+					++Index;
+				}
+
+				++ExemptionCount;
+			}
+
+			ASSERT (Index < ARRAYSIZE(KexData->IfeoParameters.DllRewriteExemptions));
+
+			NumberOfUserSpecifiedRewriteExemptedDlls = ExemptionCount;
+			UserSpecifiedRewriteExemptedDllsInitialized = TRUE;
+		}
+
+		//
+		// Check if the specified DLL is in the user-specified exemption list.
+		//
+
+		for (Index = 0; Index < NumberOfUserSpecifiedRewriteExemptedDlls; ++Index) {
+			if (RtlEqualUnicodeString(BaseDllName, &UserSpecifiedRewriteExemptedDlls[Index], TRUE)) {
+				return TRUE;
+			}
+		}
+	}
+
 	return FALSE;
 }
 
@@ -1021,5 +1106,154 @@ NTSTATUS KexRewriteDllPath(
 	RtlCopyUnicodeString(RewrittenDllNameOut, &RewrittenDllName);
 
 	ASSERT(VALID_UNICODE_STRING(RewrittenDllNameOut));
+	return Status;
+}
+
+NTSTATUS KexAddUpdateRemoveDllRewriteEntry(
+	IN	PCUNICODE_STRING	DllName,
+	IN	PCUNICODE_STRING	RewrittenDllName OPTIONAL)
+{
+	NTSTATUS Status;
+
+	ASSUME(VALID_UNICODE_STRING(DllName));
+	ASSUME(RewrittenDllName == NULL || WELL_FORMED_UNICODE_STRING(RewrittenDllName));
+
+	Status = KexRemoveDllRewriteEntry(DllName);
+	ASSERT(NT_SUCCESS(Status) || Status == STATUS_STRING_MAPPER_ENTRY_NOT_FOUND);
+
+	if (!NT_SUCCESS(Status) && Status != STATUS_STRING_MAPPER_ENTRY_NOT_FOUND) {
+		return Status;
+	}
+
+	if (RewrittenDllName && RewrittenDllName->Buffer != NULL) {
+		Status = KexAddDllRewriteEntry(DllName, RewrittenDllName);
+	}
+	else {
+		Status = STATUS_SUCCESS;
+	}
+
+	ASSERT(NT_SUCCESS(Status));
+	return Status;
+}
+
+//
+// Implements support for KEX_DllRewriteEntries IFEO parameter.
+// RewriteSpec is a null-terminated string which contains bar-delimited key-value
+// pairs. Keys and values are separated by a colon character.
+//
+// Example: "d3d12:dxvk|xinput1_5:xinput1_3|dxgi:" (DXGI.dll would be removed from
+// the rewrite list in that case).
+//
+
+NTSTATUS KexApplyUserDllRewrite(
+	IN	PWSTR	RewriteSpec)
+{
+	NTSTATUS Status;
+	ULONG Index;
+	UNICODE_STRING Key;
+	UNICODE_STRING Value;
+
+	enum {
+		InKey,
+		InValue
+	} State;
+
+	Index = 0;
+	State = InKey;
+	Status = STATUS_SUCCESS;
+
+	if (RewriteSpec[0] == '\0') {
+		return Status;
+	}
+
+	while (TRUE) {
+		ULONG StartIndex;
+
+		StartIndex = Index;
+
+		until (RewriteSpec[Index] == '|' ||
+			   RewriteSpec[Index] == ':' ||
+			   RewriteSpec[Index] == '\0') {
+
+			++Index;
+		}
+
+		if (State == InKey) {
+			switch (RewriteSpec[Index]) {
+			case ':':
+				ASSERT ((Index - StartIndex) * sizeof(WCHAR) <= USHRT_MAX);
+				Key.Buffer = &RewriteSpec[StartIndex];
+				Key.Length = (USHORT) ((Index - StartIndex) * sizeof(WCHAR));
+				Key.MaximumLength = Key.Length;
+				ASSERT (VALID_UNICODE_STRING(&Key));
+
+				if (Key.Length == 0) {
+					// This is not reasonable.
+					return STATUS_INVALID_PARAMETER;
+				}
+
+				State = InValue;
+				break;
+			case '|':
+			case '\0':
+				// Invalid for these characters to appear now.
+				return STATUS_INVALID_PARAMETER;
+			}
+		} else if (State == InValue) {
+			switch (RewriteSpec[Index]) {
+			case '|':
+			case '\0':
+				ASSERT ((Index - StartIndex) * sizeof(WCHAR) <= USHRT_MAX);
+				Value.Buffer = &RewriteSpec[StartIndex];
+				Value.Length = (USHORT) ((Index - StartIndex) * sizeof(WCHAR));
+				Value.MaximumLength = Value.Length;
+				ASSERT (WELL_FORMED_UNICODE_STRING(&Value));
+
+				if (Value.Length > Key.Length) {
+					// DLL rewrite value must be less than or equal to the key length,
+					// since we overwrite the DLL name in-place.
+					return STATUS_INVALID_PARAMETER;
+				}
+
+				// If Value.Length is zero, this function will simply remove the DLL
+				// rewrite entry from the mapper.
+				Status = KexAddUpdateRemoveDllRewriteEntry(
+					&Key,
+					&Value);
+
+				if (Status == STATUS_STRING_MAPPER_ENTRY_NOT_FOUND) {
+					// We don't consider this an error.
+					Status = STATUS_SUCCESS;
+				}
+
+				ASSERT (NT_SUCCESS(Status));
+
+				if (!NT_SUCCESS(Status)) {
+					return Status;
+				}
+
+				if (RewriteSpec[Index] == '|') {
+					State = InKey;
+				}
+
+				break;
+			case ':':
+				return STATUS_INVALID_PARAMETER;
+			}
+		} else {
+			NOT_REACHED;
+		}
+
+		if (RewriteSpec[Index] == '\0') {
+			break;
+		}
+
+		++Index;
+	}
+
+	if (State != InValue) {
+		return STATUS_INVALID_PARAMETER;
+	}
+
 	return Status;
 }

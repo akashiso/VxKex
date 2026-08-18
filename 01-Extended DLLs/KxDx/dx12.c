@@ -85,8 +85,15 @@ HRESULT InitializeID3D12Interop(
 	ID3D12CommandList* pCmdList = NULL;
 	ID3D12Device* pDevice = NULL;
 
-	if (!pDesc || pDesc->BufferCount == 0 || pDesc->BufferCount > D3D12_INTEROP_MAX_BUFFERS)
+	if (!pDesc || pDesc->BufferCount == 0)
 		return E_INVALIDARG;
+
+	if (pDesc->BufferCount > D3D12_INTEROP_MAX_BUFFERS) {
+		KexLogWarningEvent(L"Too many swap chain buffers are requested. (BufferCount = %d > %d)",
+						   pDesc->BufferCount, D3D12_INTEROP_MAX_BUFFERS);
+
+		return E_INVALIDARG;
+	}
 
 	HRESULT hr;
 
@@ -1033,6 +1040,9 @@ HRESULT CreateIID3D12Swapchain(
 
 		CoTaskMemFree(swapchain);
 		swapchain = NULL;
+	}
+	else {
+		KexLogInformationEvent(L"Successfully initialized DXGISwapChain for D3D12.");
 	}
 
 	*out = swapchain;
