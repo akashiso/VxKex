@@ -44,12 +44,16 @@
 // Type definitions
 //
 
+// Increment KXCFG_PRESERVED_CONFIGURATION_VERSION (in preserve.c) whenever any changes
+// are made to the KXCFG_PROGRAM_CONFIGURATION structure.
+
 typedef struct {
 	BOOLEAN				Enabled;
 	BOOLEAN				DisableForChild;
 	BOOLEAN				DisableAppSpecificHacks;
 	KEX_WIN_VER_SPOOF	WinVerSpoof;
 	ULONG				StrongSpoofOptions;
+	ULONG				DisableConsoleEnhancements;		// boolean
 	ULONG				TlsForceEnabledProtocols;		// SP_PROT_*
 	ULONG				TlsForceDisabledProtocols;		// SP_PROT_*
 	IFEO_PATH_BUFFER	DllRewriteEntries;

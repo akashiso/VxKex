@@ -31,7 +31,7 @@
 #include "buildcfg.h"
 #include <KxCfgHlp.h>
 
-#define KXCFG_PRESERVED_CONFIGURATION_VERSION 3
+#define KXCFG_PRESERVED_CONFIGURATION_VERSION 2
 
 // Written directly to the registry as REG_BINARY.
 // Should not contain any members which change size with bitness.
