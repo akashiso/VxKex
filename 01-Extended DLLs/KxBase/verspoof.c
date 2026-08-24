@@ -2,6 +2,29 @@
 #include "kxbasep.h"
 #include <KexStrSafe.h>
 
+KXBASEAPI DWORD WINAPI Ext_GetVersion(
+	VOID)
+{
+	DWORD Result = GetVersion();
+	WORD Loword = LOWORD(Result);
+	INT	Major = LOBYTE(Loword);
+	INT Minor = HIBYTE(Loword);
+
+	//
+	// APPSPECIFICHACK: Java's "awt.dll" detects the version of Windows, and if it's
+	// older than Windows 8, the touch functionality will be disabled.
+	//
+	unless(KexData->IfeoParameters.DisableAppSpecific)
+	{
+		if (AshModuleBaseNameIs(ReturnAddress(), L"awt.dll") &&
+			Major == 6 && Minor < 2) {
+			Minor = 2;
+			Result = (HIWORD(Result) << 16) | MAKEWORD(Major, Minor);
+		}
+	}
+	return Result;
+}
+
 //
 // Iertutil.dll contains a version check which will end up causing errors (failure
 // to open files with ShellExecute including with shell context menus) if the reported
@@ -124,5 +147,6 @@ KXBASEAPI BOOL WINAPI Ext_VerifyVersionInfoW(
 	IN	DWORDLONG			dwlConditionMask)
 {
 	if (AshExeBaseNameIs(L"RobloxStudioBeta.exe")) return TRUE;
+	return TRUE; // YuZhouRen86
 	return VerifyVersionInfoW(lpVersionInformation, dwTypeMask, dwlConditionMask);
 }

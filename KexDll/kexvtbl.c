@@ -286,7 +286,7 @@ KEXAPI VOID NTAPI KexVtblUnpatchInplace(
 }
 
 KEXAPI PPVOID NTAPI KexVtblLookupOriginalTable(
-	IN	PVOID	PatchedVtbl)
+	IN PCVOID   	PatchedVtbl)
 {
 	RtlAcquireSRWLockShared(&pSRWLock);
 
@@ -311,7 +311,7 @@ KEXAPI PPVOID NTAPI KexVtblLookupOriginalTable(
 //
 
 KEXAPI PPVOID NTAPI KexVtblLookupPatchedTable(
-	IN	PVOID	OriginalVtbl)
+	IN	PCVOID  	OriginalVtbl)
 {
 	RtlAcquireSRWLockShared(&pSRWLock);
 

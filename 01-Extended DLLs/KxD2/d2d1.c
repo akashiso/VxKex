@@ -78,6 +78,12 @@ HRESULT WINAPI Ext_D2D1CreateFactory(
 			}
 		}
 	}
+	else {
+		if (IsEqualIID(riid, &IID_ID2D1Factory)
+			|| IsEqualIID(riid, &IID_ID2D1Factory1)) {
+			PatchD2D1Factory(*ppIFactory, IsEqualIID(riid, &IID_ID2D1Factory1));
+		}
+	}
 
 	if (FAILED(Result)) {
 		if (IsD2D1Factory1Used || IsEqualIID(riid, &IID_ID2D1Factory1)) {

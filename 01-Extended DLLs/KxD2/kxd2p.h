@@ -247,4 +247,9 @@ HRESULT STDMETHODCALLTYPE IID2D1TextRenderer_DrawGlyphRun(
 	const DWRITE_GLYPH_RUN_DESCRIPTION* glyph_run_desc,
 	IUnknown* effect);
 
+//
+// patch.c
+//
+
 ID2D1Effect* PatchColorManagement(ID2D1Effect* effect);
+void PatchD2D1Factory(ID2D1Factory* fact, BOOL isVersion1);

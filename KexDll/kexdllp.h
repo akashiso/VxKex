@@ -244,6 +244,13 @@ NTSTATUS KexOpenVxlLogForCurrentApplication(
 	OUT	PVXLHANDLE	LogHandle);
 
 //
+// ntalrtid.c
+//
+
+EXTERN FORCEINLINE VOID KexAlertByThreadIdThreadAttach(
+	VOID);
+
+//
 // rtlrng.c
 //
 

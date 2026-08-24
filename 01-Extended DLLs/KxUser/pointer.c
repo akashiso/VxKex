@@ -285,7 +285,7 @@ KXUSERAPI BOOL WINAPI GetPointerType(
 	// For some reason we have to set this, and all other pointer type requests,
 	// to touchpad pointer type or otherwise Unity doesn't work.
 	if (PointerId == 0)	*PointerType = PT_TOUCHPAD;
-	else *PointerType = PT_TOUCH;
+	else *PointerType = PT_PEN;
 	return TRUE;
 }
 
@@ -536,7 +536,22 @@ KXUSERAPI BOOL WINAPI GetPointerPenInfoHistory(
 	IN OUT	LPDWORD	EntriesCount,
 	OUT		LPVOID	PenInfo)
 {
-	SetLastError(ERROR_NOT_SUPPORTED);
+	if (EntriesCount == NULL || (*EntriesCount != 0 && PenInfo == NULL)) {
+		SetLastError(ERROR_INVALID_PARAMETER);
+		return FALSE;
+	}
+	if (PointerId == 0) {
+		SetLastError(ERROR_DATATYPE_MISMATCH);
+		return FALSE;
+	}
+	if (*EntriesCount == 1) {
+		BOOL Success = GetPointerPenInfo(PointerId, PenInfo);
+		if (!Success) *EntriesCount = 0;
+		return Success;
+	}
+	KexDebugCheckpoint();
+	SetLastError(ERROR_NO_DATA);
+	*EntriesCount = 0;
 	return FALSE;
 }
 

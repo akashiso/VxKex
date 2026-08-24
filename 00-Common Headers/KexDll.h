@@ -752,10 +752,10 @@ KEXAPI VOID NTAPI KexVtblUnpatchInplace(
 	IN	PVOID	lpVtbl);
 
 KEXAPI PPVOID NTAPI KexVtblLookupOriginalTable(
-	IN	PVOID	PatchedVtbl);
+	IN  PCVOID  	PatchedVtbl);
 
 KEXAPI PPVOID NTAPI KexVtblLookupPatchedTable(
-	IN	PVOID	OriginalVtbl);
+	IN  PCVOID	    OriginalVtbl);
 
 KEXAPI BOOLEAN NTAPI KexVtblWrap(
 	IN OUT	PVOID	Interface,

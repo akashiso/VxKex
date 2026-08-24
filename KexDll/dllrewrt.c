@@ -526,7 +526,7 @@ KEXAPI BOOLEAN NTAPI KexIsRewriteExemptedDll(
 		RtlInitConstantUnicodeString(&TargetDllName, L"wpfgfx_");
 
 		if (RtlPrefixUnicodeString(&TargetDllName, BaseDllName, TRUE)) {
-			return FALSE;
+			return TRUE; // YuZhouRen86
 		}
 
 		//
@@ -579,6 +579,16 @@ KEXAPI BOOLEAN NTAPI KexIsRewriteExemptedDll(
 		}
 
 		if (0 && RtlEqualUnicodeString(BaseDllName, &TargetDllName, TRUE)) {
+			return TRUE;
+		}
+
+		//
+		// Tablet PC Input Panel Text Services Framework
+		//
+
+		RtlInitConstantUnicodeString(&TargetDllName, L"tiptsf.dll");
+
+		if (RtlEqualUnicodeString(BaseDllName, &TargetDllName, TRUE)) {
 			return TRUE;
 		}
 	}

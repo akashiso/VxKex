@@ -3,23 +3,6 @@
 
 int _fltused = 0;
 
-UINT STDMETHODCALLTYPE IUnknownObj_Release(
-	IUnknown* This
-)
-{
-	PPVOID lpVtbl = KexVtblLookupOriginalTable(This->lpVtbl);
-	PVOID pVtbl = This->lpVtbl;
-
-	// Call to IUnknown?_Release
-	UINT RefCount =  ((HRESULT(STDMETHODCALLTYPE*)(
-		IUnknown* This
-		))(lpVtbl[2]))(This);
-	if (RefCount == 0)
-		KexVtblUnpatchInplace(pVtbl);
-
-	return RefCount;
-}
-
 HRESULT STDMETHODCALLTYPE IDWriteTextLayout4_GetFontCollection(
 	IUnknown* This,
 	UINT32 pos,
@@ -84,10 +67,9 @@ HRESULT STDMETHODCALLTYPE IDWriteFactory7_CreateTextLayout(
 	if (SUCCEEDED(hr))
 	{
 		KEX_VTBL_MODIFICATION mod[] = {
-			{2 * sizeof(PVOID), IUnknownObj_Release},
 			{44 * sizeof(PVOID), IDWriteTextLayout4_GetFontCollection}
 		};
-		KexVtblPatchInplace((*layout)->lpVtbl, mod, 2, FALSE, NULL);
+		KexVtblPatchInplace((*layout)->lpVtbl, mod, ARRAYSIZE(mod), FALSE, NULL);
 	}
 
 	return hr;
@@ -102,11 +84,11 @@ HRESULT STDMETHODCALLTYPE Ext_DWriteCoreCreateFactory(
 	HRESULT Result = DWriteCoreCreateFactory(factoryType, iid, &obj);
 
 	KEX_VTBL_MODIFICATION mod[] = {
-		{2 * sizeof(PVOID), IUnknownObj_Release},
 		{18 * sizeof(PVOID), IDWriteFactory7_CreateTextLayout}
 	};
-	KexVtblPatchInplace(obj->lpVtbl, mod, 2, FALSE, NULL);
+	KexVtblPatchInplace(obj->lpVtbl, mod, ARRAYSIZE(mod), FALSE, NULL);
 	*factory = obj;
+
 	return Result;
 }
 
@@ -118,14 +100,13 @@ KXDWAPI HRESULT WINAPI Ext_DWriteCreateFactory(
 	if (IsEqualIID(iid, &IID_IDWriteFactory)) {
 		unless (KexData->IfeoParameters.DisableAppSpecific) {
 			if ((KexData->Flags & KEXDATA_FLAG_CHROMIUM)) {
-				return DWriteCoreCreateFactory(factoryType, iid, factory);
+				return Ext_DWriteCoreCreateFactory(factoryType, iid, factory);
 			}
 		}
 		return DWriteCreateFactory(factoryType, iid, factory);
 	} else {
 		unless (KexData->IfeoParameters.DisableAppSpecific) {
-			if (AshExeBaseNameIs(L"Zps.exe") 
-				|| AshExeBaseNameIs(L"cherrytree.exe")) {
+			if (AshExeBaseNameIs(L"Zps.exe")) {
 				return DWriteCreateFactory(factoryType, iid, factory);
 			}
 		}
