@@ -24,6 +24,12 @@
     <ClCompile Include="factory.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="fontface.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="iids.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="buildcfg.h">

@@ -147,6 +147,5 @@ KXBASEAPI BOOL WINAPI Ext_VerifyVersionInfoW(
 	IN	DWORDLONG			dwlConditionMask)
 {
 	if (AshExeBaseNameIs(L"RobloxStudioBeta.exe")) return TRUE;
-	return TRUE; // YuZhouRen86
 	return VerifyVersionInfoW(lpVersionInformation, dwTypeMask, dwlConditionMask);
 }

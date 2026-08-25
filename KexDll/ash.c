@@ -300,3 +300,24 @@ VOID AshApplyGodotEnvironmentVariableHacks(
 	RtlInitConstantUnicodeString(&VariableName, L"VK_DRIVER_FILES");
 	RtlSetEnvironmentVariable(NULL, &VariableName, &VariableValue);
 }
+
+VOID AshApplyGPUIEnvironmentVariableHacks(
+	VOID)
+{
+	UNICODE_STRING VariableName;
+	UNICODE_STRING VariableValue;
+
+	ASSERT(AshExeBaseNameIs(L"picoforge.exe"));
+
+	//
+	// This could also fix other GPUI based applications.
+	//
+
+	if (OriginalMajorVersion < 10)
+	{
+		KexLogInformationEvent(L"App-Specific Hack applied for GPUI framework based applications.");
+		RtlInitConstantUnicodeString(&VariableName, L"GPUI_DISABLE_DIRECT_COMPOSITION");
+		RtlInitConstantUnicodeString(&VariableValue, L"1");
+		RtlSetEnvironmentVariable(NULL, &VariableName, &VariableValue);
+	}
+}

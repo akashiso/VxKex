@@ -131,7 +131,7 @@ HRESULT STDMETHODCALLTYPE IIDXGIFactory2_CreateSwapChainForHwnd(
 			descCopy.SwapEffect = DXGI_SWAP_EFFECT_SEQUENTIAL;
 
 		if (pDesc->Scaling == DXGI_SCALING_NONE)
-			descCopy.Scaling = DXGI_SCALING_ASPECT_RATIO_STRETCH;
+			descCopy.Scaling = DXGI_SCALING_STRETCH;
 
 		pDesc = &descCopy;
 	}

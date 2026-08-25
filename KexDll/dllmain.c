@@ -244,6 +244,13 @@ BOOL WINAPI DllMain(
 				AshApplyNodeJSEnvironmentVariableHacks();
 			}
 
+			// APPSPECIFICHACK: Environment variable hack for GPUI framework 
+			// (currently PicoForge only) to disable DirectComposition.
+			// TODO : Find a way to recognize any GPUI based applications.
+			if (AshExeBaseNameIs(L"picoforge.exe")) {
+				AshApplyGPUIEnvironmentVariableHacks();
+			}
+
 			if (!(KexData->Flags & KEXDATA_FLAG_QT6) &&
 				AshIsStaticallyLinkedQt6Image(NtCurrentPeb()->ImageBaseAddress))
 			{

@@ -120,6 +120,9 @@ KXCOMAPI HRESULT STDMETHODCALLTYPE CActivationFactory_QueryInterface(
 	{
 		*Object = &CThreadpoolStatics;
 	}
+	else if (IsEqualIID(RefIID, &IID_IThreadPoolTimerStatics)) {
+		*Object = &CThreadpoolTimerStatics;
+	}
 	else if (IsEqualIID(RefIID, &IID_ILanguageFactory))
 	{
 		*Object = &CLanguageFactory;

@@ -82,6 +82,10 @@ HRESULT STDMETHODCALLTYPE Ext_DWriteCoreCreateFactory(
 {
 	IUnknown* obj;
 	HRESULT Result = DWriteCoreCreateFactory(factoryType, iid, &obj);
+	if (FAILED(Result))
+		return Result;
+
+	PatchDWriteFontFaceByDWriteFactory(obj);
 
 	KEX_VTBL_MODIFICATION mod[] = {
 		{18 * sizeof(PVOID), IDWriteFactory7_CreateTextLayout}
@@ -105,11 +109,6 @@ KXDWAPI HRESULT WINAPI Ext_DWriteCreateFactory(
 		}
 		return DWriteCreateFactory(factoryType, iid, factory);
 	} else {
-		unless (KexData->IfeoParameters.DisableAppSpecific) {
-			if (AshExeBaseNameIs(L"Zps.exe")) {
-				return DWriteCreateFactory(factoryType, iid, factory);
-			}
-		}
 		return Ext_DWriteCoreCreateFactory(factoryType, iid, factory);
 	}
 }

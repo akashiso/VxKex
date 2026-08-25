@@ -13,8 +13,8 @@ EXTERN PKEX_PROCESS_DATA KexData;
 #  endif
 #endif
 
-const IID IID_IDWriteFactory = {0xb859ee5a, 0xd838, 0x4b5b, {0xa2, 0xe8, 0x1a, 0xdc, 0x7d, 0x93, 0xdb, 0x48}};
-const IID IID_IDWriteFactory3 = { 0x9a1b41c3, 0xd3bb, 0x466a, {0x87, 0xfc, 0xfe, 0x67, 0x55, 0x6a, 0x3b, 0x65 } };
+const IID IID_IDWriteFactory;
+const IID IID_IDWriteFactory3;
 
 typedef enum _DWRITE_FACTORY_TYPE {
     DWRITE_FACTORY_TYPE_SHARED,
@@ -35,3 +35,5 @@ KXDWAPI HRESULT WINAPI Ext_DWriteCreateFactory(
 	IN	DWRITE_FACTORY_TYPE	factoryType,
 	IN	REFIID              iid,
 	OUT	IUnknown            **factory);
+
+void PatchDWriteFontFaceByDWriteFactory(IUnknown* dwfact);

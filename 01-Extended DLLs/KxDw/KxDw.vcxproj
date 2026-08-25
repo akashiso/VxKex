@@ -231,8 +231,10 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="dllmain.c" />
+    <ClCompile Include="fontface.c" />
     <ClCompile Include="forwards.c" />
     <ClCompile Include="factory.c" />
+    <ClCompile Include="iids.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="buildcfg.h" />

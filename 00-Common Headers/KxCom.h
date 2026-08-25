@@ -284,6 +284,14 @@ DEFINE_GUID(IID_IColorHelperStatics2, 0x24d9af02, 0x6eb0, 0x4b94, 0x85, 0x5c, 0x
 // {b6bf67dd-84bd-44f8-ac1c-93ebcb9dba91}
 DEFINE_GUID(IID_IThreadPoolStatics, 0xb6bf67dd, 0x84bd, 0x44f8, 0xac, 0x1c, 0x93, 0xeb, 0xcb, 0x9d, 0xba, 0x91);
 
+// Windows.System.Threading.ThreadPoolTimer
+// {594EBE78-55EA-4A88-A50D-3402AE1F9CF2}
+DEFINE_GUID(IID_IThreadPoolTimer, 0x594EBE78, 0x55EA, 0x4A88, 0xA5, 0x0D, 0x34, 0x02, 0xAE, 0x1F, 0x9C, 0xF2);
+
+// Windows.System.Threading.ThreadPoolTimerStatics
+// {1A8A9D02-E482-461B-B8C7-8EFAD1CCE590}
+DEFINE_GUID(IID_IThreadPoolTimerStatics, 0x1A8A9D02, 0xE482, 0x461B, 0xB8, 0xC7, 0x8E, 0xFA, 0xD1, 0xCC, 0xE5, 0x90);
+
 // Windows.Globalization.ILanguageFactory
 // {9b0252ac-0c27-44f8-b792-9793fb66c63e}
 DEFINE_GUID(IID_ILanguageFactory, 0x9b0252ac, 0x0c27, 0x44f8, 0xb7, 0x92, 0x97, 0x93, 0xfb, 0x66, 0xc6, 0x3e);
@@ -1754,6 +1762,94 @@ typedef struct _IThreadpoolStatics
 } IThreadpoolStatics;
 
 extern IThreadpoolStatics CThreadpoolStatics;
+
+typedef struct _ITimerElapsedHandler ITimerElapsedHandler;
+
+typedef struct _ITimerElapsedHandlerVtbl
+{
+	// IUnknown
+	HRESULT(STDMETHODCALLTYPE* QueryInterface)(ITimerElapsedHandler*, REFIID, PPVOID);
+	ULONG(STDMETHODCALLTYPE* AddRef)(ITimerElapsedHandler*);
+	ULONG(STDMETHODCALLTYPE* Release)(ITimerElapsedHandler*);
+
+	// TimerElapsedHandler
+	HRESULT(STDMETHODCALLTYPE* Invoke)(ITimerElapsedHandler*, PVOID);
+} ITimerElapsedHandlerVtbl;
+
+typedef struct _ITimerElapsedHandler
+{
+	ITimerElapsedHandlerVtbl* lpVtbl;
+} ITimerElapsedHandler;
+
+// System : Windows.System.Threading.ThreadpoolTimer
+
+typedef struct _IThreadpoolTimer IThreadpoolTimer;
+
+typedef struct _IThreadpoolTimerVtbl
+{
+	// IUnknown
+	HRESULT(STDMETHODCALLTYPE* QueryInterface) (IThreadpoolTimer*, REFIID, PPVOID);
+	ULONG(STDMETHODCALLTYPE* AddRef) (IThreadpoolTimer*);
+	ULONG(STDMETHODCALLTYPE* Release) (IThreadpoolTimer*);
+
+	// IInspectable
+	HRESULT(STDMETHODCALLTYPE* GetIids) (IThreadpoolTimer*, PULONG, IID**);
+	HRESULT(STDMETHODCALLTYPE* GetRuntimeClassName) (IThreadpoolTimer*, HSTRING*);
+	HRESULT(STDMETHODCALLTYPE* GetTrustLevel) (IThreadpoolTimer*, TrustLevel*);
+
+	// IThreadpoolTimer
+	HRESULT(STDMETHODCALLTYPE* get_Period)(IThreadpoolTimer*, UINT64*);
+	HRESULT(STDMETHODCALLTYPE* get_Delay)(IThreadpoolTimer*, UINT64*);
+	HRESULT(STDMETHODCALLTYPE* Cancel)(IThreadpoolTimer*);
+
+} IThreadpoolTimerVtbl;
+
+typedef struct _IThreadpoolTimer
+{
+	IThreadpoolTimerVtbl* lpVtbl;
+	ULONG RefCount;
+
+	ITimerElapsedHandler* Handler;
+	ITimerElapsedHandler* Destroyed;
+
+	PTP_TIMER hTimer;
+
+	BOOL IsRepeating;
+	UINT64 Interval;
+} IThreadpoolTimer;
+
+IThreadpoolTimerVtbl CThreadpoolTimerVtbl;
+
+// System : Windows.System.Threading.ThreadpoolTimerStatics
+
+typedef struct _IThreadpoolTimerStatics IThreadpoolTimerStatics;
+
+typedef struct _IThreadpoolTimerStaticsVtbl
+{
+	// IUnknown
+	HRESULT(STDMETHODCALLTYPE* QueryInterface) (IThreadpoolTimerStatics*, REFIID, PPVOID);
+	ULONG(STDMETHODCALLTYPE* AddRef) (IThreadpoolTimerStatics*);
+	ULONG(STDMETHODCALLTYPE* Release) (IThreadpoolTimerStatics*);
+
+	// IInspectable
+	HRESULT(STDMETHODCALLTYPE* GetIids) (IThreadpoolTimerStatics*, PULONG, IID**);
+	HRESULT(STDMETHODCALLTYPE* GetRuntimeClassName) (IThreadpoolTimerStatics*, HSTRING*);
+	HRESULT(STDMETHODCALLTYPE* GetTrustLevel) (IThreadpoolTimerStatics*, TrustLevel*);
+
+	// IThreadpoolTimerStatics
+	HRESULT(STDMETHODCALLTYPE* CreatePeriodicTimer)(IThreadpoolTimerStatics*, ITimerElapsedHandler*, UINT64, IThreadpoolTimer**);
+	HRESULT(STDMETHODCALLTYPE* CreateTimer)(IThreadpoolTimerStatics*, ITimerElapsedHandler*, UINT64, IThreadpoolTimer**);
+	HRESULT(STDMETHODCALLTYPE* CreatePeriodicTimer1)(IThreadpoolTimerStatics*, ITimerElapsedHandler*, UINT64, ITimerElapsedHandler*, IThreadpoolTimer**);
+	HRESULT(STDMETHODCALLTYPE* CreateTimer1)(IThreadpoolTimerStatics*, ITimerElapsedHandler*, UINT64, ITimerElapsedHandler*, IThreadpoolTimer**);
+
+} IThreadpoolTimerStaticsVtbl;
+
+typedef struct _IThreadpoolTimerStatics
+{
+	IThreadpoolTimerStaticsVtbl* lpVtbl;
+} IThreadpoolTimerStatics;
+
+extern IThreadpoolTimerStatics CThreadpoolTimerStatics;
 
 // Globalization : Windows.Globalization.ILanguage
 
