@@ -18,6 +18,7 @@
 #define IDC_NEWAPP					121
 #define IDC_REMOVEAPPS				122
 #define IDC_PROPERTIES				123
+#define IDC_CLEANAPPS				124
 
 
 #define IDM_LISTVIEWITEMMENU		200
@@ -25,6 +26,7 @@
 #define M_RUNPROGRAM				202
 #define M_REMOVE					203
 #define M_PROPERTIES				204
+#define M_CLEANPROGRAMS				205
 
 #define IDM_LISTVIEWBLANKSPACEMENU	210
 #define M_ADDPROGRAM				211

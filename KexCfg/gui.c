@@ -229,9 +229,15 @@ STATIC VOID KexCfgGuiPopulateApplicationList(
 	KxCfgEnumerateConfiguration(ConfigurationCallback, NULL);
 
 	if (ListView_GetItemCount(ListViewWindow) != 0) {
+		// enable Clean button
+		EnableWindow(GetDlgItem(MainWindow, IDC_CLEANAPPS), TRUE);
+
 		// reflow column widths
 		ListView_SetColumnWidth(ListViewWindow, 0, LVSCW_AUTOSIZE);
 		ListView_SetColumnWidth(ListViewWindow, 1, LVSCW_AUTOSIZE_USEHEADER);
+	} else {
+		// disable Clean button
+		EnableWindow(GetDlgItem(MainWindow, IDC_CLEANAPPS), FALSE);
 	}
 
 	SetWindowRedraw(ListViewWindow, TRUE);
@@ -719,6 +725,115 @@ STATIC VOID RunSelectedProgram(
 	}
 }
 
+STATIC BOOLEAN ShouldCleanProgramConfiguration(
+	IN	PCWSTR	ExeFullPath)
+{
+	WCHAR Root[MAX_PATH];
+	HRESULT Result;
+
+	if (FileExists(ExeFullPath)) {
+		return FALSE;
+	}
+
+	//
+	// The file doesn't currently exist. Determine what to do based
+	// on the path type and drive type.
+	//
+
+	if (PathIsNetworkPath(ExeFullPath)) {
+		// It's a network path. Don't remove the configuration because
+		// the network path might just be disconnected.
+		return FALSE;
+	}
+
+	StringCchCopy(Root, ARRAYSIZE(Root), ExeFullPath);
+	Result = PathCchStripToRoot(Root, ARRAYSIZE(Root));
+	ASSERT(SUCCEEDED(Result));
+
+	if (SUCCEEDED(Result) && GetDriveType(Root) == DRIVE_FIXED) {
+		// The drive is a fixed, connected drive (e.g. C:) but the file
+		// does not exist. Open and shut case sherlock, we need to delete
+		// the configuration for this nonexistent program.
+		return TRUE;
+	}
+
+	return FALSE;
+}
+
+STATIC VOID CleanPrograms(
+	VOID)
+{
+	ULONG ItemIndex;
+	ULONG NumberOfItemsDeleted;
+
+	NumberOfItemsDeleted = 0;
+	ItemIndex = ListView_GetNextItem(ListViewWindow, -1, LVNI_ALL);
+
+	while (ItemIndex != -1) {
+		PCWSTR ExeFullPath;
+
+		ExeFullPath = GetProgramFullPathFromListViewIndex(ItemIndex);
+
+		if (ShouldCleanProgramConfiguration(ExeFullPath)) {
+			BOOLEAN Success;
+
+			Success = KxCfgDeleteConfiguration(ExeFullPath, NULL);
+
+			if (Success) {
+				ListView_DeleteItem(ListViewWindow, ItemIndex);
+				++NumberOfItemsDeleted;
+				--ItemIndex;
+			}
+		}
+
+		ItemIndex = ListView_GetNextItem(ListViewWindow, ItemIndex, LVNI_ALL);
+	}
+
+	if (CURRENTLANG == MAKELANGID(LANG_CHINESE, SUBLANG_CHINESE_SIMPLIFIED)) {
+		switch (NumberOfItemsDeleted) {
+			case 0:
+				InfoBoxF(L"没有程序需要从启用 VxKex 的应用程序列表中清理。");
+				break;
+			case 1:
+				InfoBoxF(L"已从启用 VxKex 的应用程序列表中清理 1 个程序。");
+				break;
+			default:
+				InfoBoxF(
+					L"已从启用 VxKex 的应用程序列表中清理 %lu 个程序。",
+					NumberOfItemsDeleted);
+				break;
+		}
+	} else if (CURRENTLANG == MAKELANGID(LANG_CHINESE, SUBLANG_CHINESE_TRADITIONAL)) {
+		switch (NumberOfItemsDeleted) {
+			case 0:
+				InfoBoxF(L"沒有程式需要從啟用 VxKex 的應用程式清單中清理。");
+				break;
+			case 1:
+				InfoBoxF(L"已從啟用 VxKex 的應用程式清單中清理 1 個程式。");
+				break;
+			default:
+				InfoBoxF(
+					L"已從啟用 VxKex 的應用程式清單中清理 %lu 個程式。",
+					NumberOfItemsDeleted);
+				break;
+		}
+	} else {
+		switch (NumberOfItemsDeleted) {
+			case 0:
+				InfoBoxF(L"No programs require cleaning from the list of VxKex-enabled applications.");
+				break;
+			case 1:
+				InfoBoxF(L"1 program was cleaned from the list of VxKex-enabled applications.");
+				break;
+			default:
+				InfoBoxF(
+					L"%lu programs were cleaned from the list of VxKex-enabled applications.",
+					NumberOfItemsDeleted);
+				break;
+		}
+	}
+}
+
 STATIC VOID HandleListViewContextMenu(
 	IN	PPOINT	ClickPoint)
 {
@@ -782,6 +897,8 @@ STATIC VOID HandleListViewContextMenu(
 		RemoveSelectedPrograms();
 	} else if (MenuSelection == M_ADDPROGRAM) {
 		AddProgram();
+	} else if (MenuSelection == M_CLEANPROGRAMS) {
+		CleanPrograms();
 	}
 }
 
@@ -925,6 +1042,8 @@ STATIC INT_PTR CALLBACK DialogProc(
 			ToolTip(Window, IDC_WHICHCONTEXTMENU,
 				L"按住 Shift 键并右键单击 .exe 或 .msi 文件可打开扩展上下文菜单。\r\n"
 				L"在不按住 Shift 键的情况下右键单击可打开常规上下文菜单。");
+			ToolTip(Window, IDC_CLEANAPPS, 
+				L"已不存在的应用程序可能仍在 VxKex 中保持启用。单击此按钮可从列表中移除已删除的 EXE 或 MSI。");
 		} else if (CURRENTLANG == MAKELANGID(LANG_CHINESE, SUBLANG_CHINESE_TRADITIONAL)) {
 			ToolTip(Window, IDC_ENABLELOGGING,
 				L"如果啟用了日誌記錄功能，每當您執行啟用了 VxKex 的應用程式時，VxKex 都會在指定﻿資料夾中創建日誌檔案。");
@@ -939,6 +1058,8 @@ STATIC INT_PTR CALLBACK DialogProc(
 			ToolTip(Window, IDC_WHICHCONTEXTMENU,
 				L"按住 Shift 鍵並右鍵單擊 .exe 或 .msi 檔案可開啟擴展上下文功能表。\r\n"
 				L"在不按住 Shift 鍵的情況下右鍵單擊可開啟常規上下文功能表。");
+			ToolTip(Window, IDC_CLEANAPPS, 
+				L"已不存在的應用程式可能仍在 VxKex NEXT 中保持啟用。按一下此按鈕可從清單中移除已刪除的 EXE 或 MSI。");
 		} else {
 			ToolTip(Window, IDC_ENABLELOGGING,
 				L"If you enable logging, VxKex will create log files in the specified "
@@ -956,6 +1077,9 @@ STATIC INT_PTR CALLBACK DialogProc(
 			ToolTip(Window, IDC_WHICHCONTEXTMENU,
 				L"Shift + Right Click on a .exe or .msi file opens the extended context menu.\r\n"
 				L"Right clicking without holding the Shift key opens the normal context menu.");
+			ToolTip(Window, IDC_CLEANAPPS, 
+				L"Applications which no longer exist may remain enabled in VxKex. Click this button "
+				L"in order to remove deleted EXEs or MSIs from the list.");
 		}
 
 		//
@@ -1079,7 +1203,9 @@ STATIC INT_PTR CALLBACK DialogProc(
 				GetProgramFullPathFromListViewIndex(ItemIndex),
 				SW_SHOWDEFAULT,
 				FALSE);
-		} else {
+		} else if (ControlId == IDC_CLEANAPPS) {
+			CleanPrograms();
+		}  else {
 			return FALSE;
 		}
 	} else if (Message == WM_NOTIFY) {

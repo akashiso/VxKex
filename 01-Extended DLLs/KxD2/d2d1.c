@@ -24,8 +24,10 @@ HRESULT WINAPI Ext_D2D1CreateFactory(
 	//
 
 	unless(KexData->IfeoParameters.DisableAppSpecific) {
-		if (AshExeBaseNameIs(L"ImageGlass.exe"))
+		if (AshExeBaseNameIs(L"ImageGlass.exe")) {
+			KexLogInformationEvent(L"App-Specific Hack applied for ImageGlass.");
 			ForceWrapping = TRUE;
+		}
 	}
 
 	if (ForceWrapping)

@@ -28,7 +28,7 @@ STATIC CONST UNICODE_STRING DllRedirects[][2] = {
 	DLL_REDIRECT("BluetoothApis",								"kxuser"			)
 	DLL_REDIRECT("shcore",										"kxuser"			)
 	DLL_REDIRECT("user32",										"kxuser"			)
-	
+
 	DLL_REDIRECT("wintrust",									"kxtrust"			)
 
 	DLL_REDIRECT("combase",										"kxcom"				)
