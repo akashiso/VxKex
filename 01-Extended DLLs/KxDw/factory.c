@@ -103,7 +103,8 @@ KXDWAPI HRESULT WINAPI Ext_DWriteCreateFactory(
 {
 	if (IsEqualIID(iid, &IID_IDWriteFactory)) {
 		unless (KexData->IfeoParameters.DisableAppSpecific) {
-			if ((KexData->Flags & KEXDATA_FLAG_CHROMIUM)) {
+			if ((KexData->Flags & KEXDATA_FLAG_CHROMIUM)
+				|| (KexData->Flags & KEXDATA_FLAG_SKIASHARP)) {
 				return Ext_DWriteCoreCreateFactory(factoryType, iid, factory);
 			}
 		}

@@ -295,6 +295,25 @@ VOID AshDllLoadNotification(
 			return;
 		}
 	}
+
+	unless(KexData->Flags& KEXDATA_FLAG_SKIASHARP)
+	{
+		UNICODE_STRING SkiaSharp;
+
+		//
+		// APPSPECIFICHACK: Some application using SkiaSharp in multi-threaded situations
+		// can crash randomly when testing the DWrite version.
+		// So we just simply forced them to use Windows 10 DWrite instead.
+		//
+
+		RtlInitConstantUnicodeString(&SkiaSharp, L"libSkiaSharp.dll");
+
+		if (RtlEqualUnicodeString(&BaseName, &SkiaSharp, TRUE)) {
+			KexLogInformationEvent(L"App-Specific Hack applied for SkiaSharp applications.");
+			KexData->Flags |= KEXDATA_FLAG_SKIASHARP;
+			return;
+		}
+	}
 }
 
 

@@ -125,6 +125,7 @@
 #define KEXDATA_FLAG_QT6					512 // Indicates a Qt6 application.
 #define KEXDATA_FLAG_MSI_SERVICE			1024	// Indicates MSIEXEC /V (Windows Installer service)
 #define KEXDATA_FLAG_CONDRV_EMULATION		2048	// ConDrv emulation is enabled (see ntcondrv.c)
+#define KEXDATA_FLAG_SKIASHARP				4096	// Indicates a SkiaSharp application.
 
 #define KEX_STRONGSPOOF_SHAREDUSERDATA	1
 #define KEX_STRONGSPOOF_REGISTRY		2
