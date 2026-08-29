@@ -596,15 +596,6 @@ VOID KexSetupUninstall(
 	WCHAR PathBuffer[MAX_PATH];
 
 	//
-	// If PreserveConfig is TRUE, disable VxKex for all programs.
-	// Otherwise, delete all VxKex program configuration.
-	//
-	
-	KxCfgEnumerateConfiguration(
-		KexSetupConfigurationEnumerationCallback,
-		NULL);
-
-	//
 	// If the installer is running from KexDir, we will move it out of KexDir to a
 	// temporary location. Otherwise, we won't be able to fully remove KexDir.
 	//
@@ -729,25 +720,69 @@ VOID KexSetupUninstall(
 			L"Image File Execution Options\\{VxKexPropagationVirtualKey}");
 	}
 
-	//
-	// Delete VxKex registry key.
-	//
+	if (PreserveConfig) {
+		HKEY KeyHandle;
+		LSTATUS ErrorCode;
 
-	if (ExistingVxKexVersion < 0x80000000) {
-		KexSetupDeleteKey(HKEY_LOCAL_MACHINE, L"Software\\VXsoft\\VxKexLdr");
+		// should always be the case since PreserveConfig only happens when user is
+		// explicitly uninstalling (not when upgrading from legacy vxkex)
+		ASSERT (ExistingVxKexVersion >= 0x80000000);
+
+		//
+		// Delete InstalledVersion in the VxKex HKLM key, so that future invocations
+		// of the installer know that we're uninstalled.
+		// Upon any error, just fall back to the code path that does not preserve
+		// configuration.
+		//
+
+		KeyHandle = KxCfgOpenVxKexRegistryKey(
+			FALSE,
+			KEY_READ | KEY_WRITE,
+			KexSetupTransactionHandle);
+
+		ASSERT (KeyHandle != NULL);
+
+		if (KeyHandle == NULL) {
+			goto PreserveConfigFailure;
+		}
+
+		ErrorCode = RegDeleteValue(KeyHandle, L"InstalledVersion");
+		ASSERT (ErrorCode == ERROR_SUCCESS);
+
+		SafeClose(KeyHandle);
+
+		if (ErrorCode != ERROR_SUCCESS && ErrorCode != ERROR_FILE_NOT_FOUND) {
+			goto PreserveConfigFailure;
+		}
 	} else {
-		KexSetupDeleteKey(HKEY_LOCAL_MACHINE, L"Software\\VXsoft\\VxKex");
+PreserveConfigFailure:
+		PreserveConfig = FALSE;
+
+		//
+		// Delete VxKex HKLM and HKCU registry keys.
+		//
+
+		if (ExistingVxKexVersion < 0x80000000) {
+			KexSetupDeleteKey(HKEY_LOCAL_MACHINE, L"Software\\VXsoft\\VxKexLdr");
+		} else {
+			KexSetupDeleteKey(HKEY_LOCAL_MACHINE, L"Software\\VXsoft\\VxKex");
+		}
+
+		if (ExistingVxKexVersion < 0x80000000) {
+			KexSetupDeleteKey(HKEY_CURRENT_USER, L"Software\\VXsoft\\VxKexLdr");
+		} else {
+			KexSetupDeleteKey(HKEY_CURRENT_USER, L"Software\\VXsoft\\VxKex");
+		}
 	}
 
 	//
-	// Delete VxKex user registry key.
+	// Delete all VxKex program configuration from IFEO.
+	// If PreserveConfig is TRUE, all VxKex configuration is preserved.
 	//
 
-	if (ExistingVxKexVersion < 0x80000000) {
-		KexSetupDeleteKey(HKEY_CURRENT_USER, L"Software\\VXsoft\\VxKexLdr");
-	} else {
-		KexSetupDeleteKey(HKEY_CURRENT_USER, L"Software\\VXsoft\\VxKex");
-	}
+	KxCfgEnumerateConfiguration(
+		KexSetupConfigurationEnumerationCallback,
+		NULL);
 	
 	//
 	// Unregister shell extension and .vxl file extension handler.
@@ -1209,6 +1244,15 @@ VOID KexSetupInstall(
 		KexSetupTransactionHandle);
 
 	ASSERT (Success);
+
+	//
+	// Restore any preserved configuration that may exist.
+	// Preserved configuration is created when the user previously uninstalled
+	// with the "Keep my compatibility settings" checkbox checked.
+	//
+
+	Success = KxCfgRestorePreservedConfiguration(KexSetupTransactionHandle);
+	ASSERT(Success);
 
 	//
 	// Add scheduled task for UAC-free configuration.

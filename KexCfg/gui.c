@@ -834,6 +834,135 @@ STATIC VOID CleanPrograms(
 	}
 }
 
+BOOLEAN ExportConfigurationWithPrompt(
+	VOID)
+{
+	BOOLEAN Success;
+	OPENFILENAME SaveDialogInfo;
+	WCHAR SaveFileName[MAX_PATH];
+
+	ZeroMemory(&SaveDialogInfo, sizeof(SaveDialogInfo));
+
+	StringCchCopy(SaveFileName, ARRAYSIZE(SaveFileName), L"Exported KexCfg.ini");
+
+	SaveDialogInfo.lStructSize = sizeof(SaveDialogInfo);
+	SaveDialogInfo.hwndOwner = MainWindow;
+	if (CURRENTLANG == MAKELANGID(LANG_CHINESE, SUBLANG_CHINESE_SIMPLIFIED)) SaveDialogInfo.lpstrFilter = L"配置文件（*.ini）\0*.ini\0所有文件（*.*）\0*.*\0";
+	else if (CURRENTLANG == MAKELANGID(LANG_CHINESE, SUBLANG_CHINESE_TRADITIONAL)) SaveDialogInfo.lpstrFilter = L"配置檔案（*.ini）\0*.ini\0所有檔案（*.*）\0*.*\0";
+	else SaveDialogInfo.lpstrFilter = L"INI Files (*.ini)\0*.ini\0All Files (*.*)\0*.*\0";
+	SaveDialogInfo.nMaxFile = ARRAYSIZE(SaveFileName);
+	SaveDialogInfo.lpstrFile = SaveFileName;
+	SaveDialogInfo.Flags = OFN_OVERWRITEPROMPT;
+	SaveDialogInfo.lpstrDefExt = L"ini";
+
+	Success = GetSaveFileName(&SaveDialogInfo);
+
+	if (!Success) {
+		return TRUE;
+	}
+
+	Success = KxCfgExportConfigurationToIni(SaveFileName);
+
+	if (CURRENTLANG == MAKELANGID(LANG_CHINESE, SUBLANG_CHINESE_SIMPLIFIED)) {
+		if (Success) InfoBoxF(L"配置已成功导出。");
+		else InfoBoxF(L"配置导出失败。");
+	}
+	else if (CURRENTLANG == MAKELANGID(LANG_CHINESE, SUBLANG_CHINESE_TRADITIONAL)) {
+		if (Success) InfoBoxF(L"配置已成功匯出。");
+		else InfoBoxF(L"配置匯出失敗。");
+	}
+	else {
+		if (Success) InfoBoxF(L"Configuration exported successfully.");
+		else InfoBoxF(L"Failed to export configuration.");
+	}
+
+	return Success;
+}
+
+BOOLEAN ImportConfigurationWithPrompt(
+	VOID)
+{
+	BOOLEAN Success;
+	OPENFILENAME OpenDialogInfo;
+	WCHAR OpenFileName[MAX_PATH];
+	HANDLE TransactionHandle;
+
+	ZeroMemory(&OpenDialogInfo, sizeof(OpenDialogInfo));
+	OpenFileName[0] = '\0';
+	OpenDialogInfo.lStructSize = sizeof(OpenDialogInfo);
+	OpenDialogInfo.hwndOwner = MainWindow;
+	if (CURRENTLANG == MAKELANGID(LANG_CHINESE, SUBLANG_CHINESE_SIMPLIFIED)) {
+		OpenDialogInfo.lpstrFilter = L"配置文件（*.ini）\0*.ini\0所有文件（*.*）\0*.*\0";
+		OpenDialogInfo.lpstrTitle = L"选择配置文件...";
+	}
+	else if (CURRENTLANG == MAKELANGID(LANG_CHINESE, SUBLANG_CHINESE_TRADITIONAL)) {
+		OpenDialogInfo.lpstrFilter = L"配置檔案（*.ini）\0*.ini\0所有檔案（*.*）\0*.*\0";
+		OpenDialogInfo.lpstrTitle = L"選擇配置檔案...";
+	}
+	else {
+		OpenDialogInfo.lpstrFilter = L"INI Files (*.ini)\0*.ini\0All Files (*.*)\0*.*\0";
+		OpenDialogInfo.lpstrTitle = L"Select a INI file...";
+	}
+	OpenDialogInfo.nMaxFile = ARRAYSIZE(OpenFileName);
+	OpenDialogInfo.lpstrFile = OpenFileName;
+	OpenDialogInfo.Flags = OFN_PATHMUSTEXIST;
+	OpenDialogInfo.lpstrDefExt = L"ini";
+
+	Success = GetOpenFileName(&OpenDialogInfo);
+
+	if (!Success) {
+		return TRUE;
+	}
+
+	TransactionHandle = CreateSimpleTransaction(L"VxKex Configuration Tool (GUI) Transaction");
+
+	if (!TransactionHandle) {
+		if (CURRENTLANG == MAKELANGID(LANG_CHINESE, SUBLANG_CHINESE_SIMPLIFIED)) {
+			ErrorBoxF(
+				L"无法为此操作创建事务。%s",
+				GetLastErrorAsString());
+		}
+		else if (CURRENTLANG == MAKELANGID(LANG_CHINESE, SUBLANG_CHINESE_TRADITIONAL)) {
+			ErrorBoxF(
+				L"﻿無法為此操作創建事務。%s",
+				GetLastErrorAsString());
+		}
+		else {
+			ErrorBoxF(
+				L"A transaction for this operation could not be created. %s",
+				GetLastErrorAsString());
+		}
+
+		return FALSE;
+	}
+
+	Success = KxCfgImportConfigurationFromIni(OpenFileName, TransactionHandle);
+
+	if (Success) {
+		KexCfgGuiPopulateApplicationList();
+		NtCommitTransaction(TransactionHandle, TRUE);
+	} else {
+		NtRollbackTransaction(TransactionHandle, TRUE);
+	}
+
+	if (CURRENTLANG == MAKELANGID(LANG_CHINESE, SUBLANG_CHINESE_SIMPLIFIED)) {
+		if (Success) InfoBoxF(L"配置已成功导入。");
+		else InfoBoxF(L"配置导入失败。");
+	}
+	else if (CURRENTLANG == MAKELANGID(LANG_CHINESE, SUBLANG_CHINESE_TRADITIONAL)) {
+		if (Success) InfoBoxF(L"配置已成功匯入。");
+		else InfoBoxF(L"配置匯入失敗。");
+	}
+	else {
+		if (Success) InfoBoxF(L"Configuration imported successfully.");
+		else InfoBoxF(L"Failed to import configuration.");
+	}
+
+	SafeClose(TransactionHandle);
+
+	return Success;
+}
+
 STATIC VOID HandleListViewContextMenu(
 	IN	PPOINT	ClickPoint)
 {
@@ -1044,6 +1173,10 @@ STATIC INT_PTR CALLBACK DialogProc(
 				L"在不按住 Shift 键的情况下右键单击可打开常规上下文菜单。");
 			ToolTip(Window, IDC_CLEANAPPS, 
 				L"已不存在的应用程序可能仍在 VxKex 中保持启用。单击此按钮可从列表中移除已删除的 EXE 或 MSI。");
+			ToolTip(Window, IDC_EXPORT,
+				L"导出所有配置。");
+			ToolTip(Window, IDC_IMPORT,
+				L"从文件中导入配置。导入的配置将会覆盖同一个程序的原有配置。");
 		} else if (CURRENTLANG == MAKELANGID(LANG_CHINESE, SUBLANG_CHINESE_TRADITIONAL)) {
 			ToolTip(Window, IDC_ENABLELOGGING,
 				L"如果啟用了日誌記錄功能，每當您執行啟用了 VxKex 的應用程式時，VxKex 都會在指定﻿資料夾中創建日誌檔案。");
@@ -1060,6 +1193,10 @@ STATIC INT_PTR CALLBACK DialogProc(
 				L"在不按住 Shift 鍵的情況下右鍵單擊可開啟常規上下文功能表。");
 			ToolTip(Window, IDC_CLEANAPPS, 
 				L"已不存在的應用程式可能仍在 VxKex NEXT 中保持啟用。按一下此按鈕可從清單中移除已刪除的 EXE 或 MSI。");
+			ToolTip(Window, IDC_EXPORT,
+				L"匯出所有配置。");
+			ToolTip(Window, IDC_IMPORT,
+				L"從檔案中匯入設定。匯入的設定將會覆蓋同一個程式的原有設定。");
 		} else {
 			ToolTip(Window, IDC_ENABLELOGGING,
 				L"If you enable logging, VxKex will create log files in the specified "
@@ -1080,6 +1217,11 @@ STATIC INT_PTR CALLBACK DialogProc(
 			ToolTip(Window, IDC_CLEANAPPS, 
 				L"Applications which no longer exist may remain enabled in VxKex. Click this button "
 				L"in order to remove deleted EXEs or MSIs from the list.");
+			ToolTip(Window, IDC_EXPORT,
+				L"Export all configuration.");
+			ToolTip(Window, IDC_IMPORT,
+				L"Import configuration from a file. The imported configuration will overwrite the "
+				L"existing configuration of the same program.");
 		}
 
 		//
@@ -1205,7 +1347,11 @@ STATIC INT_PTR CALLBACK DialogProc(
 				FALSE);
 		} else if (ControlId == IDC_CLEANAPPS) {
 			CleanPrograms();
-		}  else {
+		} else if (ControlId == IDC_EXPORT) {
+			ExportConfigurationWithPrompt();
+		} else if (ControlId == IDC_IMPORT) {
+			ImportConfigurationWithPrompt();
+		} else {
 			return FALSE;
 		}
 	} else if (Message == WM_NOTIFY) {

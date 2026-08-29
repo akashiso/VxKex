@@ -25,6 +25,7 @@
     <ClCompile Include="dskclnup.c" />
     <ClCompile Include="elevate.c" />
     <ClCompile Include="getcfg.c" />
+    <ClCompile Include="export.c" />
     <ClCompile Include="kexdir.c" />
     <ClCompile Include="kxschanl.c" />
     <ClCompile Include="logging.c" />

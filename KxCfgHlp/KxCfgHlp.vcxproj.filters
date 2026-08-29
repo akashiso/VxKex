@@ -57,6 +57,9 @@
     <ClCompile Include="preserve.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="export.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\00-Common Headers\KxCfgHlp.h">

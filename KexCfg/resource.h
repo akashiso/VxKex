@@ -19,6 +19,8 @@
 #define IDC_REMOVEAPPS				122
 #define IDC_PROPERTIES				123
 #define IDC_CLEANAPPS				124
+#define IDC_EXPORT					125
+#define IDC_IMPORT					126
 
 
 #define IDM_LISTVIEWITEMMENU		200
