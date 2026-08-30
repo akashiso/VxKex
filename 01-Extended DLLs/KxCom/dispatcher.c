@@ -583,9 +583,11 @@ KXCOMAPI HRESULT STDMETHODCALLTYPE DispatcherQueueController_ShutdownQueueAsync(
 		return E_POINTER;
 
 	IAsyncAction* action = CreateAsyncAction();
+	IUnknown_AddRef(action);
 
 	if (!PostThreadMessage(thiz->queue->dwThreadId, uDispatcherMsg, KEXDQMSG_CMD_SHUTDOWN, (LPARAM)action))
 	{
+		IUnknown_Release(action);
 		IUnknown_Release(action);
 		return HRESULT_FROM_WIN32(GetLastError());
 	}

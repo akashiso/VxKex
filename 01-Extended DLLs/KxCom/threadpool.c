@@ -11,7 +11,6 @@ typedef struct ThreadPool
 {
 	INIT_ONCE init_once;
 	TP_CALLBACK_ENVIRON environment;
-	PTP_TIMER timer;
 } ThreadPool;
 
 typedef struct ThreadPoolWorkItem
@@ -47,12 +46,12 @@ STATIC VOID CALLBACK ThreadPoolWorkCallback(
 	AsyncActionCompleted(item->action, result);
 
 	CloseThreadpoolWork(work);
+	CoTaskMemFree(item);
 }
 
 STATIC HRESULT ThreadPoolSubmitWork(
 	IN ThreadPoolWorkItem* item,
-	IN WorkItemPriority priority,
-	OUT IAsyncAction** action)
+	IN WorkItemPriority priority)
 {
 	ThreadPool* pool;
 	TP_WORK* work;
@@ -64,15 +63,14 @@ STATIC HRESULT ThreadPoolSubmitWork(
 	pool = &pools[priority + 1];
 
 	if (!InitOnceExecuteOnce(&pool->init_once, ThreadPoolInitOnce, pool, NULL))
-		return E_FAIL;
+		return HRESULT_FROM_WIN32(GetLastError());
 
 	if (!(work = CreateThreadpoolWork(ThreadPoolWorkCallback, item, &pool->environment)))
-		return E_FAIL;
+		return HRESULT_FROM_WIN32(GetLastError());
 
-	*action = item->action;
 	item->action->lpVtbl->AddRef(item->action);
-	SubmitThreadpoolWork(work);
 
+	SubmitThreadpoolWork(work);
 	return S_OK;
 }
 
@@ -85,13 +83,14 @@ STATIC DWORD WINAPI SlicedThreadProc(
 	result = item->handler->lpVtbl->Invoke(item->handler, item->action);
 	item->handler->lpVtbl->Release(item->handler);
 	AsyncActionCompleted(item->action, result);
+
+	CoTaskMemFree(item);
 	return 0;
 }
 
 STATIC HRESULT StandaloneThreadSubmitWork(
 	IN ThreadPoolWorkItem* item,
-	IN WorkItemPriority priority,
-	OUT IAsyncAction** action)
+	IN WorkItemPriority priority)
 {
 	HANDLE thread;
 	thread = CreateThread(NULL, 0, SlicedThreadProc, item, priority == WorkItemPriority_Normal ?
@@ -105,15 +104,13 @@ STATIC HRESULT StandaloneThreadSubmitWork(
 		return HRESULT_FROM_WIN32(GetLastError());
 	}
 
-	*action = item->action;
 	item->action->lpVtbl->AddRef(item->action);
 
-	if (priority != WorkItemPriority_Normal) {
+	if (priority != WorkItemPriority_Normal)
 		SetThreadPriority(thread, priority == WorkItemPriority_High ? THREAD_PRIORITY_HIGHEST : THREAD_PRIORITY_LOWEST);
-		ResumeThread(thread);
-	}
-	CloseHandle(thread);
 
+	ResumeThread(thread);
+	CloseHandle(thread);
 	return S_OK;
 }
 
@@ -138,6 +135,7 @@ STATIC HRESULT ThreadPoolRunAync(
 
 	item->handler = handler;
 	item->action = CreateAsyncAction();
+
 	if (item->action == NULL) {
 		CoTaskMemFree(item);
 		return E_OUTOFMEMORY;
@@ -147,13 +145,16 @@ STATIC HRESULT ThreadPoolRunAync(
 	*action = item->action;
 
 	if (options == WorkItemOptions_TimeSliced)
-		hr = StandaloneThreadSubmitWork(item, priority, action);
+		hr = StandaloneThreadSubmitWork(item, priority);
 	else
-		hr = ThreadPoolSubmitWork(item, priority, action);
+		hr = ThreadPoolSubmitWork(item, priority);
 
 	if (FAILED(hr)) {
-		item->handler->lpVtbl->Release(item->handler);
-		AsyncActionCompleted(item->action, S_OK);
+		*action = NULL;
+		handler->lpVtbl->Release(handler);
+
+		AsyncActionCompleted(item->action, hr);
+		CoTaskMemFree(item);
 	}
 
 	return hr;
@@ -294,6 +295,58 @@ IThreadpoolStatics CThreadpoolStatics = {
 
 // System : Windows.System.Threading.ThreadpoolTimer
 
+STATIC HRESULT ThreadpoolTimerStop(
+	IN	IThreadpoolTimer* timer)
+{
+	if (timer->hTimer) {
+		timer->IsRepeating = FALSE;
+
+		SetThreadpoolTimer(timer->hTimer, NULL, 0, 0);
+		WaitForThreadpoolTimerCallbacks(timer->hTimer, FALSE);
+		CloseThreadpoolTimer(timer->hTimer);
+	}
+
+	timer->hTimer = NULL;
+	return S_OK;
+}
+
+STATIC ULONG STDMETHODCALLTYPE ThreadpoolTimerRelease(
+	IN	IThreadpoolTimer* This)
+{
+	ULONG NewRefCount;
+
+	NewRefCount = InterlockedDecrement(&This->RefCount);
+
+	if (NewRefCount == 0) {
+		ThreadpoolTimerStop(This);
+
+		This->Handler->lpVtbl->Release(This->Handler);
+		if (This->Destroyed)
+			This->Destroyed->lpVtbl->Release(This->Destroyed);
+		CoTaskMemFree(This);
+	}
+
+	return NewRefCount;
+}
+
+STATIC ULONG STDMETHODCALLTYPE ThreadpoolTimerReleaseNoWaiting(
+	IN	IThreadpoolTimer* This)
+{
+	ULONG NewRefCount;
+
+	NewRefCount = InterlockedDecrement(&This->RefCount);
+
+	if (NewRefCount == 0) {
+		CloseThreadpoolTimer(This->hTimer);
+
+		This->Handler->lpVtbl->Release(This->Handler);
+		if (This->Destroyed)
+			This->Destroyed->lpVtbl->Release(This->Destroyed);
+		CoTaskMemFree(This);
+	}
+
+	return NewRefCount;
+}
 
 STATIC VOID CALLBACK ThreadpoolTimerCallback(
 	IN PTP_CALLBACK_INSTANCE Instance,
@@ -312,6 +365,7 @@ Quit:
 	if (timer->Destroyed)
 		timer->Destroyed->lpVtbl->Invoke(timer->Destroyed, timer);
 
+	ThreadpoolTimerReleaseNoWaiting(timer);
 	return;
 }
 
@@ -325,10 +379,13 @@ STATIC HRESULT ThreadpoolTimerStart(
 	pool = &pools[1];
 
 	if (!InitOnceExecuteOnce(&pool->init_once, ThreadPoolInitOnce, pool, NULL))
-		return E_FAIL;
+		return HRESULT_FROM_WIN32(GetLastError());
 
 	timer->hTimer = CreateThreadpoolTimer(ThreadpoolTimerCallback,
 										  timer, &pool->environment);
+
+	if (!timer->hTimer)
+		return HRESULT_FROM_WIN32(GetLastError());
 
 	if (!timer->IsRepeating) {
 		LARGE_INTEGER timeL;
@@ -343,23 +400,8 @@ STATIC HRESULT ThreadpoolTimerStart(
 	else {
 		SetThreadpoolTimer(timer->hTimer, NULL, (DWORD)(timer->Interval / 10 / 1000), 0);
 	}
-	return HRESULT_FROM_WIN32(GetLastError());
-}
 
-STATIC HRESULT ThreadpoolTimerStop(
-	IN	IThreadpoolTimer* timer)
-{
-	if (timer->hTimer) {
-		timer->IsRepeating = FALSE;
-
-		SetThreadpoolTimer(timer->hTimer, NULL, 0, 0);
-		WaitForThreadpoolTimerCallbacks(timer->hTimer, FALSE);
-		CloseThreadpoolTimer(timer->hTimer);
-	}
-
-	timer->hTimer = NULL;
-
-	timer->lpVtbl->Release(timer);
+	timer->lpVtbl->AddRef(timer);
 	return S_OK;
 }
 
@@ -383,6 +425,7 @@ STATIC HRESULT CreateIThreadpoolTimer(
 	timer->IsRepeating = IsRepeating;
 	timer->Handler = Handler;
 	timer->Destroyed = Destroyed;
+	timer->hTimer = NULL;
 
 	Handler->lpVtbl->AddRef(Handler);
 	if (Destroyed)
@@ -391,6 +434,10 @@ STATIC HRESULT CreateIThreadpoolTimer(
 	HRESULT Result = ThreadpoolTimerStart(timer);
 
 	if (FAILED(Result)) {
+		Handler->lpVtbl->Release(Handler);
+		if (Destroyed)
+			Destroyed->lpVtbl->Release(Destroyed);
+
 		CoTaskMemFree(timer);
 		return Result;
 	}
@@ -442,20 +489,7 @@ KXCOMAPI ULONG STDMETHODCALLTYPE ThreadpoolTimer_AddRef(
 KXCOMAPI ULONG STDMETHODCALLTYPE ThreadpoolTimer_Release(
 	IN	IThreadpoolTimer* This)
 {
-	ULONG NewRefCount;
-
-	NewRefCount = InterlockedDecrement(&This->RefCount);
-
-	if (NewRefCount == 0) {
-		if (This->hTimer)
-			DeleteTimerQueueTimer(NULL, This->hTimer, INVALID_HANDLE_VALUE);
-
-		This->Handler->lpVtbl->Release(This->Handler);
-		This->Destroyed->lpVtbl->Release(This->Destroyed);
-		CoTaskMemFree(This);
-	}
-
-	return NewRefCount;
+	return ThreadpoolTimerRelease(This);
 }
 
 KXCOMAPI HRESULT STDMETHODCALLTYPE ThreadpoolTimer_GetIids(
