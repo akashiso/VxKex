@@ -390,6 +390,7 @@ BOOL WINAPI DllMain(
 		KexAlertByThreadIdThreadAttach();
 	} else if (Reason == DLL_PROCESS_DETACH) {
 		VxlCloseLog(&KexData->LogHandle);
+		KexVtblCleanUp();
 	}
 
 	return TRUE;

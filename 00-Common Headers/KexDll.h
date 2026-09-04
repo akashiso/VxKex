@@ -227,7 +227,6 @@ typedef struct _KEX_VTBL_REWRITE_DATA
 	PPVOID RewrittenVtbl;
 
 	SIZE_T NumberOfFuncs;
-	UINT   RefCount;
 } TYPEDEF_TYPE_NAME(KEX_VTBL_REWRITE_DATA);
 
 

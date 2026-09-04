@@ -140,3 +140,124 @@ BOOLEAN KexCfgParseBooleanParameter(
 		ExitProcess(STATUS_INVALID_PARAMETER);
 	}
 }
+
+BOOLEAN KexCfgExportConfigurationToIni(
+	OUT	PWSTR	FilePath)
+{
+	HANDLE FileHandle = NULL;
+	BOOLEAN Success = TRUE;
+	DWORD NumBytesWritten;
+	PWSTR IniData = NULL;
+	PSTR IniDataUTF8 = NULL;
+	
+	Success = KxCfgExportConfigurationToIni(&IniData);
+	if (!Success) {
+		goto Error;
+	}
+
+	NumBytesWritten = WideCharToMultiByte(CP_UTF8, 0, IniData, -1, NULL, 0, NULL, NULL);
+	IniDataUTF8 = SafeAlloc(CHAR, NumBytesWritten);
+
+	WideCharToMultiByte(CP_UTF8, 0, IniData, -1, IniDataUTF8, NumBytesWritten, NULL, NULL);
+
+	FileHandle = CreateFileW(
+		FilePath,
+		GENERIC_WRITE,
+		0,
+		NULL,
+		CREATE_ALWAYS,
+		FILE_ATTRIBUTE_NORMAL,
+		NULL);
+
+	if (!FileHandle) {
+		Success = FALSE;
+		goto Error;
+	}
+
+	Success = WriteFile(
+		FileHandle,
+		IniDataUTF8,
+		NumBytesWritten - 1,
+		&NumBytesWritten,
+		NULL);
+
+Error:
+	if (FileHandle) {
+		CloseHandle(FileHandle);
+	}
+	if (IniData) {
+		SafeFree(IniData);
+	}
+	if (IniDataUTF8) {
+		SafeFree(IniDataUTF8);
+	}
+
+	return Success;
+}
+
+BOOLEAN KexCfgImportConfigurationFromIni(
+	IN	PWSTR	FilePath,
+	IN  HANDLE  TransactionHandle OPTIONAL)
+{
+	HANDLE FileHandle = NULL;
+	PWSTR IniData = NULL;
+	PSTR IniDataUTF8 = NULL;
+	BOOLEAN Success = TRUE;
+	DWORD FileSize;
+
+	FileHandle = CreateFileW(
+		FilePath,
+		GENERIC_READ,
+		0,
+		NULL,
+		OPEN_EXISTING,
+		FILE_ATTRIBUTE_NORMAL,
+		NULL);
+
+	if (!FileHandle) {
+		Success = FALSE;
+		goto Error;
+	}
+
+	FileSize = GetFileSize(FileHandle, NULL);
+
+	if (FileSize == 0) {
+		Success = TRUE;
+		goto Error;
+	}
+
+	IniDataUTF8 = SafeAlloc(CHAR, FileSize + 1);
+
+	Success = ReadFile(
+		FileHandle,
+		IniDataUTF8,
+		FileSize,
+		&FileSize,
+		NULL);
+
+	if (!Success) {
+		Success = FALSE;
+		goto Error;
+	}
+
+	IniDataUTF8[FileSize] = '\0';
+	FileSize = MultiByteToWideChar(CP_UTF8, 0, IniDataUTF8, -1, NULL, 0);
+	IniData = SafeAlloc(WCHAR, FileSize);
+
+	MultiByteToWideChar(CP_UTF8, 0, IniDataUTF8, -1, IniData, FileSize);
+
+	KxCfgImportConfigurationFromIni(IniData, TransactionHandle);
+
+Error:
+	if (FileHandle) {
+		CloseHandle(FileHandle);
+	}
+	if (IniData) {
+		SafeFree(IniData);
+	}
+	if (IniDataUTF8) {
+		SafeFree(IniDataUTF8);
+	}
+
+	return Success;
+}

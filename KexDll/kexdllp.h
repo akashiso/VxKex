@@ -237,6 +237,12 @@ HANDLE KexRtlpGetGlobalKeyedEvent(
 	VOID);
 
 //
+// kexvtbl.c
+//
+
+VOID KexVtblCleanUp();
+
+//
 // logging.c
 //
 

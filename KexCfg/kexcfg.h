@@ -46,3 +46,10 @@ INT KexCfgMessageBox(
 
 BOOLEAN KexCfgParseBooleanParameter(
 	IN	PCWSTR	Parameter);
+
+BOOLEAN KexCfgExportConfigurationToIni(
+	OUT	PWSTR	FilePath);
+
+BOOLEAN KexCfgImportConfigurationFromIni(
+	IN	PWSTR	FilePath,
+	IN  HANDLE  TransactionHandle OPTIONAL);

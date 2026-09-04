@@ -167,10 +167,10 @@ KXCFGDECLSPEC BOOLEAN KXCFGAPI KxCfgRestorePreservedConfiguration(
 	IN	HANDLE	TransactionHandle OPTIONAL);
 
 KXCFGDECLSPEC BOOLEAN KXCFGAPI KxCfgExportConfigurationToIni(
-	OUT	PWSTR	FilePath);
+	OUT	PPWSTR	OutIniData);
 
 KXCFGDECLSPEC BOOLEAN KXCFGAPI KxCfgImportConfigurationFromIni(
-	IN	PWSTR	FilePath,
+	IN	PWSTR	IniData,
 	IN  HANDLE  TransactionHandle OPTIONAL);
 
 #ifdef KXCFGDECLSPEC

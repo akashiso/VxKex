@@ -861,7 +861,7 @@ BOOLEAN ExportConfigurationWithPrompt(
 		return TRUE;
 	}
 
-	Success = KxCfgExportConfigurationToIni(SaveFileName);
+	Success = KexCfgExportConfigurationToIni(SaveFileName);
 
 	if (CURRENTLANG == MAKELANGID(LANG_CHINESE, SUBLANG_CHINESE_SIMPLIFIED)) {
 		if (Success) InfoBoxF(L"配置已成功导出。");
@@ -936,11 +936,11 @@ BOOLEAN ImportConfigurationWithPrompt(
 		return FALSE;
 	}
 
-	Success = KxCfgImportConfigurationFromIni(OpenFileName, TransactionHandle);
+	Success = KexCfgImportConfigurationFromIni(OpenFileName, TransactionHandle);
 
 	if (Success) {
-		KexCfgGuiPopulateApplicationList();
 		NtCommitTransaction(TransactionHandle, TRUE);
+		KexCfgGuiPopulateApplicationList();
 	} else {
 		NtRollbackTransaction(TransactionHandle, TRUE);
 	}

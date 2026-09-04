@@ -539,6 +539,11 @@ BOOLEAN CALLBACK KxCfgExportConfigurationEnumerationCallback(
 	Success &= IniWriterAddKeyValue(Writer, L"ExeFullPath", ExeFullPathOrBaseName);
 
 	Success &= IniWriterAddKeyValue(
+		Writer,
+		L"KEX_Enabled",
+		Configuration.Enabled ? L"1" : L"0");
+
+	Success &= IniWriterAddKeyValue(
 		Writer, 
 		L"KEX_DisableForChild", 
 		Configuration.DisableForChild ? L"1" : L"0");
@@ -587,10 +592,9 @@ BOOLEAN CALLBACK KxCfgExportConfigurationEnumerationCallback(
 }
 
 KXCFGDECLSPEC BOOLEAN KXCFGAPI KxCfgExportConfigurationToIni(
-	OUT	PWSTR	FilePath)
+	OUT	PPWSTR	OutIniData)
 {
 	INI_WRITER Writer;
-	HANDLE FileHandle = NULL;
 	BOOLEAN Success = TRUE;
 	DWORD NumBytesWritten;
 
@@ -601,37 +605,10 @@ KXCFGDECLSPEC BOOLEAN KXCFGAPI KxCfgExportConfigurationToIni(
 	Success = KxCfgEnumerateConfiguration(KxCfgExportConfigurationEnumerationCallback, &Writer);
 
 	if (!Success) {
-		goto Error;
+		return Success;
 	}
 
-	FileHandle = CreateFileW(
-		FilePath,
-		GENERIC_WRITE,
-		0,
-		NULL,
-		CREATE_ALWAYS,
-		FILE_ATTRIBUTE_NORMAL,
-		NULL);
-
-	if (!FileHandle) {
-		Success = FALSE;
-		goto Error;
-	}
-
-	Success = WriteFile(
-		FileHandle,
-		IniWriterGetContent(&Writer),
-		(DWORD)(Writer.Length * sizeof(WCHAR)),
-		&NumBytesWritten,
-		NULL);
-
-Error:
-	IniWriterDestroy(&Writer);
-
-	if (FileHandle) {
-		CloseHandle(FileHandle);
-	}
-
+	*OutIniData = Writer.Buffer;
 	return Success;
 }
 
@@ -650,6 +627,9 @@ BOOLEAN KxCfgImportConfiguration(
 	if (PathBuffer[0] == L'\0') {
 		return FALSE;
 	}
+
+	IniParserGetValue(Parser, L"KEX_Enabled", Buffer, ARRAYSIZE(Buffer), L"0");
+	Configuration.Enabled = (Buffer[0] != L'0');
 
 	IniParserGetValue(Parser, L"KEX_DisableForChild", Buffer, ARRAYSIZE(Buffer), L"0");
 	Configuration.DisableForChild = (Buffer[0] != L'0');
@@ -705,8 +685,6 @@ BOOLEAN KxCfgImportConfiguration(
 		ARRAYSIZE(Configuration.DllRewriteExemptions), 
 		L"");
 
-	Configuration.Enabled = TRUE;
-
 	return KxCfgSetConfiguration(
 		PathBuffer,
 		&Configuration,
@@ -714,50 +692,12 @@ BOOLEAN KxCfgImportConfiguration(
 }
 
 KXCFGDECLSPEC BOOLEAN KXCFGAPI KxCfgImportConfigurationFromIni(
-	IN	PWSTR	FilePath,
+	IN	PWSTR	IniData,
 	IN  HANDLE  TransactionHandle OPTIONAL)
 {
 	INI_PARSER Parser;
-	HANDLE FileHandle = NULL;
-	PWSTR IniData = NULL;
 	BOOLEAN Success = TRUE;
-	DWORD FileSize;
 	WCHAR NameBuffer[MAX_PATH];
-
-	FileHandle = CreateFileW(
-		FilePath,
-		GENERIC_READ,
-		0,
-		NULL,
-		OPEN_EXISTING,
-		FILE_ATTRIBUTE_NORMAL,
-		NULL);
-
-	if (!FileHandle) {
-		Success = FALSE;
-		goto Error;
-	}
-
-	FileSize = GetFileSize(FileHandle, NULL);
-
-	if (FileSize == 0) {
-		Success = TRUE;
-		goto Error;
-	}
-
-	IniData = SafeAlloc(WCHAR, FileSize);
-	
-	Success = ReadFile(
-		FileHandle,
-		IniData,
-		FileSize,
-		&FileSize,
-		NULL);
-
-	if (!Success) {
-		Success = FALSE;
-		goto Error;
-	}
 
 	IniParserInitialize(IniData, &Parser);
 
@@ -765,16 +705,8 @@ KXCFGDECLSPEC BOOLEAN KXCFGAPI KxCfgImportConfigurationFromIni(
 		Success = KxCfgImportConfiguration(&Parser, TransactionHandle);
 
 		if (!Success) {
-			goto Error;
+			return Success;
 		}
-	}
-
-Error:
-	if (!FileHandle) {
-		CloseHandle(FileHandle);
-	}
-	if (IniData) {
-		SafeFree(IniData);
 	}
 
 	return Success;
