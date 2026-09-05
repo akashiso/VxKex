@@ -240,7 +240,8 @@ HANDLE KexRtlpGetGlobalKeyedEvent(
 // kexvtbl.c
 //
 
-VOID KexVtblCleanUp();
+VOID KexVtblDllUnloadNotification(
+	IN	PCLDR_DLL_NOTIFICATION_DATA	NotificationData);
 
 //
 // logging.c

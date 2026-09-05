@@ -86,4 +86,7 @@ VOID NTAPI KexDllNotificationCallback(
 				NotificationData->FullDllName);
 		}
 	}
+	else if (Reason == LDR_DLL_NOTIFICATION_REASON_UNLOADED) {
+		KexVtblDllUnloadNotification(NotificationData);
+	}
 }

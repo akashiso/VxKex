@@ -96,6 +96,7 @@ KEXAPI NTSTATUS NTAPI KexVtblPatchInplace(
 	NewRecord->RewrittenVtbl = VtblPtr;
 	NewRecord->OriginalVtbl = (PPVOID)(((LPBYTE)NewRecord) + sizeof(KEX_VTBL_REWRITE_DATA));
 	NewRecord->NumberOfFuncs = MaxOffset;
+	NewRecord->PrevPendingDelete = NULL;
 	CopyMemory(NewRecord->OriginalVtbl, VtblPtr, MaxOffset * sizeof(PVOID));
 
 	//
@@ -306,6 +307,55 @@ KEXAPI PPVOID NTAPI KexVtblLookupPatchedTable(
 }
 
 //
+// Clear the records when the patched DLL was already unloaded.
+//
+
+VOID KexVtblDllUnloadNotification(
+	IN	PCLDR_DLL_NOTIFICATION_DATA	NotificationData)
+{
+	if (RewriteRecordTable == NULL)
+		return;
+
+	RtlAcquireSRWLockExclusive(&SRWLock);
+
+	PPVOID ModuleAddressStart;
+	PPVOID ModuleAddressEnd;
+
+	ModuleAddressStart = NotificationData->DllBase;
+	ModuleAddressEnd = (PPVOID)((PCHAR)NotificationData->DllBase + NotificationData->SizeOfImage);
+
+	RTL_DYNAMIC_HASH_TABLE_ENUMERATOR Enumerator;
+	PRTL_DYNAMIC_HASH_TABLE_ENTRY Entry;
+	KEX_VTBL_REWRITE_DATA* PrevPendingDelete = NULL;
+
+	RtlInitWeakEnumerationHashTable(RewriteRecordTable, &Enumerator);
+	Entry = RtlWeaklyEnumerateEntryHashTable(RewriteRecordTable, &Enumerator);
+	while (Entry) {
+		KEX_VTBL_REWRITE_DATA* Record = CONTAINING_RECORD(Entry, KEX_VTBL_REWRITE_DATA, HashTableEntry);
+		PPVOID VtblPtr = Record->RewrittenVtbl;
+
+		if (VtblPtr >= ModuleAddressStart && VtblPtr < ModuleAddressEnd) {
+			Record->PrevPendingDelete = PrevPendingDelete;
+			PrevPendingDelete = Record;
+		}
+
+		Entry = RtlWeaklyEnumerateEntryHashTable(RewriteRecordTable, &Enumerator);
+	}
+
+	RtlEndWeakEnumerationHashTable(RewriteRecordTable, &Enumerator);
+
+	while (PrevPendingDelete) {
+		KEX_VTBL_REWRITE_DATA* Next = PrevPendingDelete->PrevPendingDelete;
+
+		RtlRemoveEntryHashTable(RewriteRecordTable, &PrevPendingDelete->HashTableEntry, NULL);
+		HeapFree(GetProcessHeap(), 0, PrevPendingDelete);
+		PrevPendingDelete = Next;
+	}
+
+	RtlReleaseSRWLockExclusive(&SRWLock);
+}
+
+//
 // Replace the pointer to the virtual function table of the given interface.
 // Note that this kind of rewriting will slow down the program since it inserts some
 // code between the caller and callee.
@@ -451,28 +501,4 @@ KEXAPI VOID NTAPI KexVtblUnwrap(
 		// ignore
 	}
 	HeapFree(GetProcessHeap(), 0, ReplacementWrapper->pContext);
-}
-
-VOID KexVtblCleanUp()
-{
-	if (RewriteRecordTable == NULL) {
-		return;
-	}
-	RtlAcquireSRWLockExclusive(&SRWLock);
-
-	RTL_DYNAMIC_HASH_TABLE_ENUMERATOR Enumerator;
-	PRTL_DYNAMIC_HASH_TABLE_ENTRY Entry;
-
-	RtlInitWeakEnumerationHashTable(RewriteRecordTable, &Enumerator);
-	Entry = RtlWeaklyEnumerateEntryHashTable(RewriteRecordTable, &Enumerator);
-	while (Entry) {
-		KEX_VTBL_REWRITE_DATA* Record = CONTAINING_RECORD(Entry, KEX_VTBL_REWRITE_DATA, HashTableEntry);
-		HeapFree(GetProcessHeap(), 0, Record);
-
-		Entry = RtlWeaklyEnumerateEntryHashTable(RewriteRecordTable, &Enumerator);
-	}
-	RtlEndWeakEnumerationHashTable(RewriteRecordTable, &Enumerator);
-
-	RtlDeleteHashTable(RewriteRecordTable);
-	RtlReleaseSRWLockExclusive(&SRWLock);
 }

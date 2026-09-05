@@ -1135,7 +1135,10 @@ NTSTATUS KexAddUpdateRemoveDllRewriteEntry(
 		return Status;
 	}
 
-	if (RewrittenDllName && RewrittenDllName->Buffer != NULL) {
+	if (RewrittenDllName && 
+		RewrittenDllName->Length != 0 && 
+		RewrittenDllName->Buffer != NULL) {
+
 		Status = KexAddDllRewriteEntry(DllName, RewrittenDllName);
 	}
 	else {

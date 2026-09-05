@@ -227,6 +227,7 @@ typedef struct _KEX_VTBL_REWRITE_DATA
 	PPVOID RewrittenVtbl;
 
 	SIZE_T NumberOfFuncs;
+	struct _KEX_VTBL_REWRITE_DATA* PrevPendingDelete;
 } TYPEDEF_TYPE_NAME(KEX_VTBL_REWRITE_DATA);
 
 
