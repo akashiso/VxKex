@@ -596,7 +596,6 @@ KXCFGDECLSPEC BOOLEAN KXCFGAPI KxCfgExportConfigurationToIni(
 {
 	INI_WRITER Writer;
 	BOOLEAN Success = TRUE;
-	DWORD NumBytesWritten;
 
 	if (!IniWriterInitialize(&Writer)) {
 		return FALSE;
