@@ -1,3 +1,4 @@
+!!!NOTE: This is deprecated.!!!
 Patches For icu.dll
 
 Base : 0x180000000, amd64, .text (START = 0x180001000), getIcuDataDirectoryUnderWindowsDirectory (0x180003540)

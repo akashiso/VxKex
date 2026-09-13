@@ -499,6 +499,10 @@ VOID KexSetupInstallFiles(
 	// remove msvw10, which is no longer included
 	KexSetupFormatPath(TargetPath, L"%s\\Kex32\\msvw10.dll", KexDir);
 	KexSetupDeleteFile(TargetPath);
+
+	// remove icudtl.dat, which is moved to another directory
+	KexSetupFormatPath(TargetPath, L"%s\\icudtl.dat", KexDir);
+	KexSetupDeleteFile(TargetPath);
 	
 	if (Is64BitOS) {
 		// remove old PDBs

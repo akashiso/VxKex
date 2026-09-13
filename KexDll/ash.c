@@ -300,3 +300,21 @@ VOID AshApplyGodotEnvironmentVariableHacks(
 	RtlInitConstantUnicodeString(&VariableName, L"VK_DRIVER_FILES");
 	RtlSetEnvironmentVariable(NULL, &VariableName, &VariableValue);
 }
+
+VOID AshApplyUnconditionalEnvironmentVariableHacks(
+	VOID)
+{
+	UNICODE_STRING VariableName;
+	UNICODE_STRING VariableValue;
+
+	KexLogInformationEvent(L"Unconditional App-Specific Hack applied");
+
+	//
+	// APPSPECIFICHACK: Environment variable hack for GPUI framework 
+	// to disable DirectComposition.
+	//
+
+	RtlInitConstantUnicodeString(&VariableName, L"GPUI_DISABLE_DIRECT_COMPOSITION");
+	RtlInitConstantUnicodeString(&VariableValue, L"1");
+	RtlSetEnvironmentVariable(NULL, &VariableName, &VariableValue);
+}

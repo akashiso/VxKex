@@ -382,38 +382,3 @@ LSTATUS WINAPI Ext_RegQueryValueExW(
 
 	return LStatus;
 }
-
-KXBASEAPI DWORD WINAPI Ext_GetEnvironmentVariableW(
-	IN LPCWSTR lpName,
-	OUT LPWSTR lpBuffer,
-	IN DWORD nSize
-)
-{
-	if (StringEqualA((PCSTR)lpName, "KexDirPath__")) {
-		if (!AshModuleBaseNameIs(ReturnAddress(), L"icu.dll"))
-			return GetEnvironmentVariableW(lpName, lpBuffer, nSize);
-
-		PWSTR Path = KexData->KexDir.Buffer;
-		UINT Length = KexData->KexDir.Length / sizeof(WCHAR);
-
-		if (nSize < Length + 1)
-			return Length + 1;
-
-		CopyMemory(lpBuffer, Path, (Length + 1) * sizeof(WCHAR));
-		return Length;
-	}
-
-	// APPSPECIFICHACK: Environment variable hack for GPUI framework 
-	// to disable DirectComposition.
-	if (StringEqualW(lpName, L"GPUI_DISABLE_DIRECT_COMPOSITION")) {
-		if (nSize < 2)
-			return 2;
-
-		KexLogInformationEvent(L"App-Specific Hack applied for GPUI framework based applications.");
-		lpBuffer[0] = L'1';
-		lpBuffer[1] = L'\0';
-		return 1;
-	}
-
-	return GetEnvironmentVariableW(lpName, lpBuffer, nSize);
-}

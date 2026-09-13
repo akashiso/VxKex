@@ -277,6 +277,12 @@ BOOL WINAPI DllMain(
 				KexData->Flags |= KEXDATA_FLAG_CONDRV_EMULATION;
 			}
 
+			//
+			// This is used for applications which doesn't have a significant feature
+			// to be detected.
+			//
+
+			AshApplyUnconditionalEnvironmentVariableHacks();
 
 			// APPSPECIFICHACK: Detect Chromium based on EXE exports.
 			AshPerformChromiumDetectionFromModuleExports(Peb->ImageBaseAddress);

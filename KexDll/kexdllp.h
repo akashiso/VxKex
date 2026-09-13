@@ -100,6 +100,9 @@ VOID AshApplyNodeJSEnvironmentVariableHacks(
 VOID AshApplyGodotEnvironmentVariableHacks(
 	VOID);
 
+VOID AshApplyUnconditionalEnvironmentVariableHacks(
+	VOID);
+
 BOOLEAN AshIsStaticallyLinkedQt6Image(
 	IN	PVOID	ModuleBase);
 

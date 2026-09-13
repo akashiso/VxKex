@@ -571,12 +571,6 @@ KEXAPI NTSTATUS NTAPI KexLdrLoadDll(
 	UNICODE_STRING krnl32;
 	RtlInitConstantUnicodeString(&krnl32, L"kernel32");
 
-	if (AshExeBaseNameIs(L"start_protected_game.exe")
-		&& RtlPrefixUnicodeString(DllName, &krnl32, TRUE))
-	{
-		goto BailOut;
-	}
-
 	if (DllName->Length == 0) {
 		goto BailOut;
 	}

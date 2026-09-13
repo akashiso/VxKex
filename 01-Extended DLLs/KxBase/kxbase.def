@@ -51,6 +51,13 @@ EXPORTS
 	;; misc.c
 	GetOsSafeBootMode
 	GetFirmwareType
+	GetSystemWindowsDirectoryW			= Ext_GetSystemWindowsDirectoryW
+	GetIsEdpEnabled
+	SubscribeEdpEnabledStateChange
+	UnsubscribeEdpEnabledStateChange
+	GetIsWdagEnabled
+	SubscribeWdagEnabledStateChange
+	UnsubscribeWdagEnabledStateChange
 
 	;; geoname.c
 	GetUserDefaultGeoName
@@ -244,8 +251,6 @@ EXPORTS
 	RegGetValueA						= Ext_RegGetValueA
 	RegGetValueW						= Ext_RegGetValueW
 	RegQueryValueExW					= Ext_RegQueryValueExW
-	GetEnvironmentVariableW				= Ext_GetEnvironmentVariableW
-	GetEnvironmentVariable				= Ext_GetEnvironmentVariableW
 
 	;; console.c
 	WriteConsoleA							= Ext_WriteConsoleA

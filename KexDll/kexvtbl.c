@@ -62,7 +62,7 @@ KEXAPI NTSTATUS NTAPI KexVtblPatchInplace(
 		RtlInitWeakEnumerationHashTable(RewriteRecordTable, &Enumerator);
 		Entry = RtlWeaklyEnumerateEntryHashTable(RewriteRecordTable, &Enumerator);
 		while (Entry) {
-			KEX_VTBL_REWRITE_DATA* Record = CONTAINING_RECORD(Entry, KEX_VTBL_REWRITE_DATA, HashTableEntry);
+			PKEX_VTBL_REWRITE_DATA Record = CONTAINING_RECORD(Entry, KEX_VTBL_REWRITE_DATA, HashTableEntry);
 
 			PPVOID OverlappedStart = NULL;
 			PPVOID OverlappedEnd = NULL;
@@ -91,10 +91,11 @@ KEXAPI NTSTATUS NTAPI KexVtblPatchInplace(
 	// Create a new record and store the information and the original functions we covered.
 	//
 
-	KEX_VTBL_REWRITE_DATA* NewRecord;
+	PKEX_VTBL_REWRITE_DATA NewRecord;
 	NewRecord = HeapAlloc(GetProcessHeap(), 0, sizeof(KEX_VTBL_REWRITE_DATA) + sizeof(PVOID) * MaxOffset);
 	NewRecord->RewrittenVtbl = VtblPtr;
 	NewRecord->OriginalVtbl = (PPVOID)(((LPBYTE)NewRecord) + sizeof(KEX_VTBL_REWRITE_DATA));
+	NewRecord->AuthorModuleAddr = ReturnAddress();
 	NewRecord->NumberOfFuncs = MaxOffset;
 	NewRecord->PrevPendingDelete = NULL;
 	CopyMemory(NewRecord->OriginalVtbl, VtblPtr, MaxOffset * sizeof(PVOID));
@@ -167,30 +168,12 @@ Exit:
 	return Status;
 }
 
-//
-// Decrease the reference count of a modified table.
-// You could call this function when an interface that is referring this table is truly released.
-//
-
-KEXAPI VOID NTAPI KexVtblUnpatchInplace(
-	IN	PVOID	Vtbl)
+BOOL KexVtblRestorePatchedTable(
+	IN PKEX_VTBL_REWRITE_DATA Record)
 {
-	RtlAcquireSRWLockExclusive(&SRWLock);
-
-	KEX_VTBL_REWRITE_DATA* Record = NULL;
-	PRTL_DYNAMIC_HASH_TABLE_ENTRY Entry;
-
-	Entry = RtlLookupEntryHashTable(RewriteRecordTable, (ULONG_PTR)Vtbl, NULL);
-	if (!Entry) {
-		RtlReleaseSRWLockExclusive(&SRWLock);
-		return;
-	}
-
-	Record = CONTAINING_RECORD(Entry, KEX_VTBL_REWRITE_DATA, HashTableEntry);
-
 	BOOL HaveModifiedPageProtection = FALSE;
 	SIZE_T RegionSize = Record->NumberOfFuncs * sizeof(PVOID);
-	PVOID BaseAddress = Vtbl;
+	PVOID BaseAddress = Record->RewrittenVtbl;
 	ULONG OldProtect;
 	NTSTATUS Status;
 
@@ -210,18 +193,18 @@ KEXAPI VOID NTAPI KexVtblUnpatchInplace(
 		KexLogErrorEvent(
 			L"Failed to resume the rewritten virtual function table (%p <- %p, %d functions)\r\n\r\n"
 			L"While attempting to change memory protections, encountered %s.",
-			Vtbl,
+			Record->RewrittenVtbl,
 			Record->OriginalVtbl,
 			Record->NumberOfFuncs,
 			KexRtlNtStatusToString(Status));
 	}
 
 	try {
-		CopyMemory(Vtbl, Record->OriginalVtbl, Record->NumberOfFuncs * sizeof(PVOID));
+		CopyMemory(Record->RewrittenVtbl, Record->OriginalVtbl, Record->NumberOfFuncs * sizeof(PVOID));
 	} except(GetExceptionCode() == STATUS_ACCESS_VIOLATION)
 	{
 		//
-		// This shouldn't happen unless Vtbl is not an effective address (in theory).
+		// This shouldn't happen unless Record->RewrittenVtbl is not an effective address (in theory).
 		// But it actually happened sometimes for some reasons.
 		// For this we just do nothing because the rewritten functions will query
 		// the original table and will crash if not found.
@@ -230,13 +213,12 @@ KEXAPI VOID NTAPI KexVtblUnpatchInplace(
 			L"Failed to resume the rewritten virtual function table (%p <- %p, %d functions)\r\n\r\n"
 			L"Encountered STATUS_ACCESS_VIOLATION even after changing page protections.\r\n"
 			L"Maybe %p is not an effective address. (the module is unloaded etc.)",
-			Vtbl,
+			Record->RewrittenVtbl,
 			Record->OriginalVtbl,
 			Record->NumberOfFuncs,
-			Vtbl);
+			Record->RewrittenVtbl);
 
-		RtlReleaseSRWLockExclusive(&SRWLock);
-		return;
+		return FALSE;
 	}
 
 	Status = NtProtectVirtualMemory(
@@ -246,6 +228,30 @@ KEXAPI VOID NTAPI KexVtblUnpatchInplace(
 		OldProtect,
 		&OldProtect);
 	ASSERT(NT_SUCCESS(Status));
+
+	return TRUE;
+}
+
+KEXAPI VOID NTAPI KexVtblUnpatchInplace(
+	IN	PVOID	Vtbl)
+{
+	RtlAcquireSRWLockExclusive(&SRWLock);
+
+	PKEX_VTBL_REWRITE_DATA Record = NULL;
+	PRTL_DYNAMIC_HASH_TABLE_ENTRY Entry;
+
+	Entry = RtlLookupEntryHashTable(RewriteRecordTable, (ULONG_PTR)Vtbl, NULL);
+	if (!Entry) {
+		RtlReleaseSRWLockExclusive(&SRWLock);
+		return;
+	}
+
+	Record = CONTAINING_RECORD(Entry, KEX_VTBL_REWRITE_DATA, HashTableEntry);
+
+	if (!KexVtblRestorePatchedTable(Record)) {
+		RtlReleaseSRWLockExclusive(&SRWLock);
+		return;
+	}
 
 	RtlRemoveEntryHashTable(RewriteRecordTable, &Record->HashTableEntry, NULL);
 	HeapFree(GetProcessHeap(), 0, Record);
@@ -258,7 +264,7 @@ KEXAPI PPVOID NTAPI KexVtblLookupOriginalTable(
 {
 	RtlAcquireSRWLockShared(&SRWLock);
 
-	KEX_VTBL_REWRITE_DATA* Record = NULL;
+	PKEX_VTBL_REWRITE_DATA Record = NULL;
 	PRTL_DYNAMIC_HASH_TABLE_ENTRY Entry;
 	PPVOID Result = NULL;
 
@@ -291,7 +297,7 @@ KEXAPI PPVOID NTAPI KexVtblLookupPatchedTable(
 	RtlInitEnumerationHashTable(RewriteRecordTable, &Enumerator);
 	Entry = RtlEnumerateEntryHashTable(RewriteRecordTable, &Enumerator);
 	while (Entry) {
-		KEX_VTBL_REWRITE_DATA* Record = CONTAINING_RECORD(Entry, KEX_VTBL_REWRITE_DATA, HashTableEntry);
+		PKEX_VTBL_REWRITE_DATA Record = CONTAINING_RECORD(Entry, KEX_VTBL_REWRITE_DATA, HashTableEntry);
 
 		PVOID CurrentVtbl = (PVOID)Record->OriginalVtbl;
 		if (CurrentVtbl == VtblPtr) {
@@ -326,15 +332,21 @@ VOID KexVtblDllUnloadNotification(
 
 	RTL_DYNAMIC_HASH_TABLE_ENUMERATOR Enumerator;
 	PRTL_DYNAMIC_HASH_TABLE_ENTRY Entry;
-	KEX_VTBL_REWRITE_DATA* PrevPendingDelete = NULL;
+	PKEX_VTBL_REWRITE_DATA PrevPendingDelete = NULL;
 
 	RtlInitWeakEnumerationHashTable(RewriteRecordTable, &Enumerator);
 	Entry = RtlWeaklyEnumerateEntryHashTable(RewriteRecordTable, &Enumerator);
 	while (Entry) {
-		KEX_VTBL_REWRITE_DATA* Record = CONTAINING_RECORD(Entry, KEX_VTBL_REWRITE_DATA, HashTableEntry);
+		PKEX_VTBL_REWRITE_DATA Record = CONTAINING_RECORD(Entry, KEX_VTBL_REWRITE_DATA, HashTableEntry);
 		PPVOID VtblPtr = Record->RewrittenVtbl;
+		PPVOID AuthorAddr = Record->AuthorModuleAddr;
 
 		if (VtblPtr >= ModuleAddressStart && VtblPtr < ModuleAddressEnd) {
+			Record->PrevPendingDelete = PrevPendingDelete;
+			PrevPendingDelete = Record;
+		}
+		else if (AuthorAddr >= ModuleAddressStart && AuthorAddr < ModuleAddressEnd) {
+			KexVtblRestorePatchedTable(Record);
 			Record->PrevPendingDelete = PrevPendingDelete;
 			PrevPendingDelete = Record;
 		}
@@ -397,7 +409,7 @@ KEXAPI BOOLEAN NTAPI KexVtblWrap(
 		return FALSE;
 	}
 
-	KEX_VTBL_WRAPPER* Wrapper = (KEX_VTBL_WRAPPER*)(WrapperBuffer);
+	PKEX_VTBL_WRAPPER Wrapper = (PKEX_VTBL_WRAPPER)(WrapperBuffer);
 	Wrapper->lpVtbl = VtblPtr;
 	Wrapper->This = Interface;
 	WrapperBuffer += SizeOfContext + sizeof(KEX_VTBL_WRAPPER);
@@ -454,8 +466,8 @@ KEXAPI BOOLEAN NTAPI KexVtblWrap(
 		ModuleAddrEnd = (PVOID)((PCHAR)DllEntry->DllBase + DllEntry->SizeOfImage);
 	}
 
-	KEX_VTBL_REPLACEMENT_WRAPPER* ReplacementWrapper;
-	ReplacementWrapper = (KEX_VTBL_REPLACEMENT_WRAPPER*)(WrapperBuffer);
+	PKEX_VTBL_REPLACEMENT_WRAPPER ReplacementWrapper;
+	ReplacementWrapper = (PKEX_VTBL_REPLACEMENT_WRAPPER)(WrapperBuffer);
 	ReplacementWrapper->pContext = Wrapper;
 	ReplacementWrapper->OriginalVtbl = VtblPtr;
 	ReplacementWrapper->ModifiedVtbl = ModifiedTable;
@@ -476,8 +488,8 @@ KEXAPI VOID NTAPI KexVtblGetWrapperContext(
 	OUT	PPVOID	OriginalVtbl)
 {
 	PCHAR VtblPtr = *(PCHAR*)(Interface);
-	KEX_VTBL_REPLACEMENT_WRAPPER* ReplacementWrapper;
-	ReplacementWrapper = (KEX_VTBL_REPLACEMENT_WRAPPER*)(VtblPtr - sizeof(KEX_VTBL_REPLACEMENT_WRAPPER));
+	PKEX_VTBL_REPLACEMENT_WRAPPER ReplacementWrapper;
+	ReplacementWrapper = (PKEX_VTBL_REPLACEMENT_WRAPPER)(VtblPtr - sizeof(KEX_VTBL_REPLACEMENT_WRAPPER));
 
 	if (Context) {
 		*Context = ReplacementWrapper->pContext;
@@ -491,8 +503,8 @@ KEXAPI VOID NTAPI KexVtblUnwrap(
 	IN	PVOID	Interface)
 {
 	PCHAR VtblPtr = *(PCHAR*)(Interface);
-	KEX_VTBL_REPLACEMENT_WRAPPER* ReplacementWrapper;
-	ReplacementWrapper = (KEX_VTBL_REPLACEMENT_WRAPPER*)(VtblPtr - sizeof(KEX_VTBL_REPLACEMENT_WRAPPER));
+	PKEX_VTBL_REPLACEMENT_WRAPPER ReplacementWrapper;
+	ReplacementWrapper = (PKEX_VTBL_REPLACEMENT_WRAPPER)(VtblPtr - sizeof(KEX_VTBL_REPLACEMENT_WRAPPER));
 
 	try {
 		*(PPVOID*)(Interface) = ReplacementWrapper->OriginalVtbl;

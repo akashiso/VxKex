@@ -225,6 +225,7 @@ typedef struct _KEX_VTBL_REWRITE_DATA
 
 	PPVOID OriginalVtbl;
 	PPVOID RewrittenVtbl;
+	PVOID  AuthorModuleAddr;
 
 	SIZE_T NumberOfFuncs;
 	struct _KEX_VTBL_REWRITE_DATA* PrevPendingDelete;

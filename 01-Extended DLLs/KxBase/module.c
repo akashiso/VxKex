@@ -121,30 +121,31 @@ KXBASEAPI HMODULE WINAPI Ext_GetModuleHandleA(
 	return ModuleHandle;
 }
 
+// Note: A stubbed or extended GetProcAddress is required for Themida to function.
+// Do not remove this.
 KXBASEAPI FARPROC WINAPI Ext_GetProcAddress(
-	IN  HMODULE hModule,
-	IN  LPCSTR lpProcName)
+	IN	HMODULE	ModuleHandle,
+	IN	PCSTR	ProcedureName)
 {
-	PPEB Peb;
-	Peb = NtCurrentPeb();
-
 	//
-	// APPSPECIFICHACK: Our VirtualAlloc2 cannot yet handle the AllocationType(s) needed
-	// by the Chromium V8 sandbox, and Chromium is incapable of gracefully handling
-	// the error, so we will return NULL if this function is requested.
+	// Hide VirtualAlloc2 from code which uses dynamic linking.
+	// Most apps which want VirtualAlloc2 want to use the placeholder API
+	// and if they find both VirtualAlloc and MapViewOfFile3 then they will
+	// attempt to use placeholders which are not supported in VxKex.
+	//
+	// Examples of apps that do this: Chromium, .NET runtime.
 	//
 
-	if (KexData->Flags & KEXDATA_FLAG_CHROMIUM) {
-		if((unsigned)lpProcName > 0xFFFF) {
-			if(!lstrcmpA(lpProcName, "VirtualAlloc2")) {
-				SetLastError(STATUS_ENTRYPOINT_NOT_FOUND);
-				return NULL;
-			}
-		}
+	if ((ULONG_PTR)ProcedureName > 0xFFFF &&
+		StringEqualIA(ProcedureName, "VirtualAlloc2")) {
+
+		KexLogInformationEvent(L"VirtualAlloc2 hidden from application");
+		return NULL;
 	}
 
-	return GetProcAddress(hModule, lpProcName);
+	return GetProcAddress(ModuleHandle, ProcedureName);
 }
+
 
 KXBASEAPI HMODULE WINAPI Ext_GetModuleHandleW(
 	IN	PCWSTR	ModuleName)
@@ -359,6 +360,7 @@ KXBASEAPI HMODULE WINAPI Ext_LoadLibraryExW(
 					StringCchCat(NewFileName, NewFileNameLength, L"\\");
 					StringCchCat(NewFileName, NewFileNameLength, FileName);
 					ModuleHandle = LoadLibraryExW(NewFileName, FileHandle, Flags);
+					SafeFree(NewFileName);
 					if (ModuleHandle || GetLastError() != ERROR_MOD_NOT_FOUND) break;
 				}
 
