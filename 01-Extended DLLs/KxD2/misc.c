@@ -150,7 +150,7 @@ ULONG STDMETHODCALLTYPE IID2D1ColorContext_Release(
 	ULONG RefCount = This->lpVtbl->Release(This->Thi);
 
 	if (RefCount == 0)
-		KexVtblUnwrap(&lpVtbl);
+		KexVtblUnwrapInterface(&lpVtbl);
 
 	return RefCount;
 }
@@ -206,7 +206,7 @@ HRESULT WrapColorContext(
 	KEX_VTBL_REPLACING_ENTRY rpl[] = {
 		{offsetof(IUnknownVtbl, Release), IID2D1ColorContext_Release, KEX_VTBL_REPLACING_ALL}
 	};
-	if (!KexVtblWrap(effectCtx, rpl, IID2D1ColorContextVtbl, 1, ARRAYSIZE(IID2D1ColorContextVtbl),
+	if (!KexVtblWrapInterface(effectCtx, rpl, IID2D1ColorContextVtbl, 1, ARRAYSIZE(IID2D1ColorContextVtbl),
 						sizeof(IID2D1ColorContext) - sizeof(KEX_VTBL_WRAPPER), (PPKEX_VTBL_WRAPPER)&ctx2))
 		return E_OUTOFMEMORY;
 

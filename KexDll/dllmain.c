@@ -188,11 +188,20 @@ BOOL WINAPI DllMain(
 			L"DisableForChild:      %d\r\n"
 			L"DisableAppSpecific:   %d\r\n"
 			L"WinVerSpoof:          %d\r\n"
-			L"StrongVersionSpoof:   0x%08lx",
+			L"StrongVersionSpoof:   0x%08lx\r\n"
+			L"TlsForceEnabledProtocols:     0x%08lx\r\n"
+			L"TlsForceDisabledProtocols:    0x%08lx\r\n"
+			L"DllRewriteEntries:    %s\r\n"
+			L"DllRewriteExemptions: %s\r\n",
 			KexData->IfeoParameters.DisableForChild,
 			KexData->IfeoParameters.DisableAppSpecific,
 			KexData->IfeoParameters.WinVerSpoof,
-			KexData->IfeoParameters.StrongVersionSpoof);
+			KexData->IfeoParameters.StrongVersionSpoof,
+			KexData->IfeoParameters.TlsForceEnabledProtocols,
+			KexData->IfeoParameters.TlsForceDisabledProtocols,
+			KexData->IfeoParameters.DllRewriteEntries,
+			KexData->IfeoParameters.DllRewriteExemptions
+			);
 
 		//
 		// Initialize DLL rewrite subsystem.

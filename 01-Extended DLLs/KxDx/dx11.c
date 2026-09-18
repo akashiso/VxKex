@@ -44,7 +44,7 @@ ULONG STDMETHODCALLTYPE IID3D11DeviceContext_Release(
     RefCount = This->lpVtbl->Release(This->Thi);
 
     if (RefCount == 0)
-        KexVtblUnwrap(&lpVtbl);
+        KexVtblUnwrapInterface(&lpVtbl);
     return RefCount;
 }
 
@@ -236,7 +236,7 @@ ID3D11DeviceContext* WrapID3D11DeviceContext(ID3D11DeviceContext* pAdapt)
     KEX_VTBL_REPLACING_ENTRY rpl[] = {
         {offsetof(IUnknownVtbl, Release), IID3D11DeviceContext_Release, KEX_VTBL_REPLACING_ALL}
     };
-    if (!KexVtblWrap(pAdapt, rpl, IID3D11DeviceContext4Vtbl, 1, ARRAYSIZE(IID3D11DeviceContext4Vtbl),
+    if (!KexVtblWrapInterface(pAdapt, rpl, IID3D11DeviceContext4Vtbl, 1, ARRAYSIZE(IID3D11DeviceContext4Vtbl),
                         0, (PPKEX_VTBL_WRAPPER)&adapt))
         return NULL;
 
@@ -278,7 +278,7 @@ ULONG STDMETHODCALLTYPE IID3D11Device_Release(
     RefCount = This->lpVtbl->Release(This->Thi);
 
     if (RefCount == 0)
-        KexVtblUnwrap(&lpVtbl);
+        KexVtblUnwrapInterface(&lpVtbl);
     return RefCount;
 }
 
@@ -618,7 +618,7 @@ KXDXAPI IDXGIDevice* STDMETHODCALLTYPE KexWrapID3D11RawDevice(IDXGIDevice* pAdap
     KEX_VTBL_REPLACING_ENTRY rpl[] = {
         {offsetof(IUnknownVtbl, Release), IID3D11Device_Release, KEX_VTBL_REPLACING_ALL}
     };
-    if (!KexVtblWrap(pAdapt, rpl, IID3D11Device5Vtbl, 1, ARRAYSIZE(IID3D11Device5Vtbl),
+    if (!KexVtblWrapInterface(pAdapt, rpl, IID3D11Device5Vtbl, 1, ARRAYSIZE(IID3D11Device5Vtbl),
                         0, (PPKEX_VTBL_WRAPPER)&adapt))
         return NULL;
 

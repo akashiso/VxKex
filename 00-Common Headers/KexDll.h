@@ -223,12 +223,13 @@ typedef struct _KEX_VTBL_REWRITE_DATA
 {
 	RTL_DYNAMIC_HASH_TABLE_ENTRY HashTableEntry;
 
-	PPVOID OriginalVtbl;
-	PPVOID RewrittenVtbl;
+	PPVOID PatchedVtbl;
 	PVOID  AuthorModuleAddr;
 
 	SIZE_T NumberOfFuncs;
 	struct _KEX_VTBL_REWRITE_DATA* PrevPendingDelete;
+
+	PVOID OriginalVtblBackup[];
 } TYPEDEF_TYPE_NAME(KEX_VTBL_REWRITE_DATA);
 
 
@@ -744,36 +745,36 @@ KEXAPI BOOLEAN NTAPI AshModuleIsDynamicRewriteExemptedModule(
 //
 
 KEXAPI NTSTATUS NTAPI KexVtblPatchInplace(
-	IN	PVOID	lpVtbl,
-	IN  PKEX_VTBL_MODIFICATION Entry,
-	IN  UINT    NumberOfEntry,
-	IN  BOOL    CanOverlap,
-	OUT PPVOID* OriginalVtbl);
+	IN	PVOID					Vtbl,
+	IN	PKEX_VTBL_MODIFICATION	Entries,
+	IN	UINT					NumberOfEntries,
+	IN	BOOL					AllowOverlap,
+	OUT	PPVOID*					OriginalVtblBackup);
 
 KEXAPI VOID NTAPI KexVtblUnpatchInplace(
-	IN	PVOID	lpVtbl);
+	IN	PVOID	Vtbl);
 
 KEXAPI PPVOID NTAPI KexVtblLookupOriginalTable(
 	IN  PCVOID  	PatchedVtbl);
 
 KEXAPI PPVOID NTAPI KexVtblLookupPatchedTable(
-	IN  PCVOID	    OriginalVtbl);
+	IN  PCVOID	    OriginalVtblBackup);
 
-KEXAPI BOOLEAN NTAPI KexVtblWrap(
-	IN OUT	PVOID	Interface,
-	IN	PKEX_VTBL_REPLACING_ENTRY	Entry,
-	IN  PVOID   RefVtbl,
-	IN  UINT    NumberOfEntry,
-	IN  UINT    NumberOfFuncs,
-	IN  SIZE_T  SizeOfBundles,
-	OUT	PPKEX_VTBL_WRAPPER	pContext);
+KEXAPI BOOLEAN NTAPI KexVtblWrapInterface(
+	IN OUT	PVOID						Interface,
+	IN		PKEX_VTBL_REPLACING_ENTRY	Entries,
+	IN		PVOID						ReferenceVtbl,
+	IN		UINT						NumberOfEntries,
+	IN		UINT						NumberOfFuncs,
+	IN		SIZE_T						SizeOfContext,
+	OUT		PPKEX_VTBL_WRAPPER			Context);
 
-KEXAPI VOID NTAPI KexVtblGetWrapperContext(
+KEXAPI VOID NTAPI KexVtblQueryWrapperContext(
 	IN	PVOID	Interface,
-	OUT PPVOID  pContext,
-	OUT PPVOID  pOriginalVtbl);
+	OUT	PPVOID	Context,
+	OUT	PPVOID	OriginalVtblBackup);
 
-KEXAPI VOID NTAPI KexVtblUnwrap(
+KEXAPI VOID NTAPI KexVtblUnwrapInterface(
 	IN	PVOID	Interface);
 
 #pragma endregion

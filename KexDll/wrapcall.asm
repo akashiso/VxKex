@@ -36,9 +36,9 @@ ENDM
 	
 	ALIGN 4
 ExternalOnlyVWrapcallX64:
+	movzx r11, al					;r11 = (uint64)al
 	mov   rax, [rsp]				;RetAddr
 	mov   r10, [rcx]				;This->lpVtbl
-	movzx r11, r11b					;r11 = (uint64)r11b
 
 	; Determine if the caller function is within the target module.
 	; If it is, go to the original implementation.
@@ -63,7 +63,7 @@ ALIGN 4
 	; We want to save some bytes for each functions
 	; so we can have lesser space taken
 
-	mov r11b, ID2
+	mov al, ID2
 	jmp ExternalOnlyVWrapcallX64
 ENDM
 

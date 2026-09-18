@@ -37,7 +37,7 @@ ULONG STDMETHODCALLTYPE IID2D1Device_Release(
 	RefCount = This->lpVtbl->Release(This->Thi);
 
 	if (RefCount == 0)
-		KexVtblUnwrap(&lpVtbl);
+		KexVtblUnwrapInterface(&lpVtbl);
 	return RefCount;
 }
 
@@ -158,7 +158,7 @@ HRESULT WrapDevice(
 	KEX_VTBL_REPLACING_ENTRY rpl[] = {
 		{offsetof(IUnknownVtbl, Release), IID2D1Device_Release, KEX_VTBL_REPLACING_ALL}
 	};
-	if (!KexVtblWrap(device, rpl, IID2D1Device0To6Vtbl, 1, ARRAYSIZE(IID2D1Device0To6Vtbl),
+	if (!KexVtblWrapInterface(device, rpl, IID2D1Device0To6Vtbl, 1, ARRAYSIZE(IID2D1Device0To6Vtbl),
 						sizeof(IID2D1Device0To6) - sizeof(KEX_VTBL_WRAPPER), (PPKEX_VTBL_WRAPPER)&device2))
 		return E_OUTOFMEMORY;
 

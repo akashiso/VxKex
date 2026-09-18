@@ -43,7 +43,7 @@ ULONG STDMETHODCALLTYPE IID2D1DeviceContext0To6_Release(
 	if (RefCount == 0)
 	{
 		IUnknown_Release((IUnknown*)rdr);
-		KexVtblUnwrap(&lpVtbl);
+		KexVtblUnwrapInterface(&lpVtbl);
 	}
 	return RefCount;
 }
@@ -865,7 +865,7 @@ HRESULT WrapDeviceContext(
 	KEX_VTBL_REPLACING_ENTRY rpl[] = {
 		{offsetof(IUnknownVtbl, Release), IID2D1DeviceContext0To6_Release, KEX_VTBL_REPLACING_ALL}
 	};
-	if (!KexVtblWrap(dc, rpl, IID2D1DeviceContext0To6Vtbl, 1, ARRAYSIZE(IID2D1DeviceContext0To6Vtbl),
+	if (!KexVtblWrapInterface(dc, rpl, IID2D1DeviceContext0To6Vtbl, 1, ARRAYSIZE(IID2D1DeviceContext0To6Vtbl),
 						sizeof(IID2D1DeviceContext0To6) - sizeof(KEX_VTBL_WRAPPER), (PPKEX_VTBL_WRAPPER)&rct2))
 		return E_OUTOFMEMORY;
 
@@ -920,7 +920,7 @@ ULONG STDMETHODCALLTYPE IID2D1AnyRenderTarget_Release(
 	RefCount = This->lpVtbl->Release(This->Thi);
 
 	if (RefCount == 0)
-		KexVtblUnwrap(&lpVtbl);
+		KexVtblUnwrapInterface(&lpVtbl);
 	return RefCount;
 }
 
@@ -943,7 +943,7 @@ HRESULT WrapAnyRenderTarget(
 		{offsetof(ID2D1RenderTargetVtbl, DrawTextLayout), IID2D1DeviceContext0To6_DrawTextLayout, KEX_VTBL_REPLACING_EXTERNAL_ONLY},
 		{offsetof(ID2D1RenderTargetVtbl, DrawGlyphRun), IID2D1DeviceContext0To6_DrawGlyphRun, KEX_VTBL_REPLACING_EXTERNAL_ONLY}
 	};
-	if (!KexVtblWrap(rTarget, rpl, NULL, ARRAYSIZE(rpl), sizeof(ID2D1DCRenderTargetVtbl) / sizeof(PVOID) + 6/*Reserved space*/,
+	if (!KexVtblWrapInterface(rTarget, rpl, NULL, ARRAYSIZE(rpl), sizeof(ID2D1DCRenderTargetVtbl) / sizeof(PVOID) + 6/*Reserved space*/,
 						sizeof(IID2D1AnyRenderTarget1) - sizeof(KEX_VTBL_WRAPPER), (PPKEX_VTBL_WRAPPER)&rct2))
 		return E_OUTOFMEMORY;
 

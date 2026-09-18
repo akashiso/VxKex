@@ -707,8 +707,8 @@ KEXAPI BOOLEAN NTAPI KexIsRewriteForcedWindowsDll(
 	RtlInitConstantUnicodeString(&SspiCli, L"sspicli.dll");
 
 	//
-	// This is used to fix a bug in GDI+ which caused GdipCreateFontFromLogfontA/W
-	// failed with NotTrueTypeFont error and breaks any text rendering after.
+	// This is used to fix a bug in GDI+ which causes GdipCreateFontFromLogfontA/W
+	// to fail with NotTrueTypeFont error and then break any text rendering after.
 	// See Ext_LoadLibraryExW in KxBase\module.c.
 	//
 

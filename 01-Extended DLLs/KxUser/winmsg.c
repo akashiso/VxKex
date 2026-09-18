@@ -402,7 +402,7 @@ STATIC BOOLEAN ProcessWindowMessageInPlace(
 		Message->message == WM_TOUCH) {
 
 		for (ParentWindow = Message->hwnd; ParentWindow != NULL; ParentWindow = GetParent(ParentWindow)) {
-			if (GetProp(ParentWindow, L"VxKex_NEXT_Touch_Window_Registered")) {
+			if (GetProp(ParentWindow, L"VxKex_Touch_Window_Registered")) {
 				RegisteredTouchWindow = TRUE;
 				break;
 			}
@@ -1061,7 +1061,7 @@ KXUSERAPI BOOL WINAPI Ext_RegisterTouchWindow(
 	IN	ULONG	Flags)
 {
 	BOOL Result = RegisterTouchWindow(Window, Flags);
-	if (Result) SetProp(Window, L"VxKex_NEXT_Touch_Window_Registered", (HANDLE)TRUE);
+	if (Result) SetProp(Window, L"VxKex_Touch_Window_Registered", (HANDLE)TRUE);
 	return Result;
 }
 
@@ -1069,7 +1069,7 @@ KXUSERAPI BOOL WINAPI Ext_UnregisterTouchWindow(
 	IN	HWND	Window)
 {
 	BOOL Result = RegisterTouchWindow(Window, 0);
-	if (Result) SetProp(Window, L"VxKex_NEXT_Touch_Window_Registered", (HANDLE)FALSE);
+	if (Result) SetProp(Window, L"VxKex_Touch_Window_Registered", (HANDLE)FALSE);
 	return Result;
 }
 

@@ -3,12 +3,12 @@
 
 // 
 // The source/destination color space of the ColorManagement effect are NULL by default.
-// In Windows 7, CColorManagement::GetSourceColorSpace/GetDestinationColorSpace
+// On Windows 7, CColorManagement::GetSourceColorSpace/GetDestinationColorSpace
 // will always try to call QueryInterface for the output color space,
-// if there's actually no color space specified (regard as NULL), these functions
+// if there's actually no color space specified (NULL), these functions
 // will lead to an access violation.
 // 
-// However, this bug is fixed in Windows 10.
+// However, this bug is fixed on Windows 10.
 //
 
 HRESULT STDMETHODCALLTYPE IID2D1ColorManagementPatch_SetValue(
@@ -66,7 +66,7 @@ ID2D1Effect* PatchColorManagement(ID2D1Effect* effect)
 		{offsetof(ID2D1EffectVtbl, GetValue), IID2D1ColorManagementPatch_GetValue, KEX_VTBL_REPLACING_EXTERNAL_ONLY},
 		{offsetof(ID2D1EffectVtbl, SetValue), IID2D1ColorManagementPatch_SetValue, KEX_VTBL_REPLACING_EXTERNAL_ONLY}
 	};
-	if (!KexVtblWrap(effect, rpl, NULL, 2, sizeof(ID2D1EffectVtbl) / sizeof(PVOID) + 2,
+	if (!KexVtblWrapInterface(effect, rpl, NULL, 2, sizeof(ID2D1EffectVtbl) / sizeof(PVOID) + 2,
 						sizeof(IID2D1ColorManagementPatch) - sizeof(KEX_VTBL_WRAPPER), (PPKEX_VTBL_WRAPPER)&patch))
 		return NULL;
 

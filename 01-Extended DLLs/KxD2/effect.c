@@ -56,7 +56,7 @@ ULONG STDMETHODCALLTYPE IID2D1EffectContext_Release(
 	ULONG RefCount = This->lpVtbl->Release(This->Thi);
 
 	if (RefCount == 0)
-		KexVtblUnwrap(&lpVtbl);
+		KexVtblUnwrapInterface(&lpVtbl);
 
 	return RefCount;
 }
@@ -249,7 +249,7 @@ ID2D1EffectContext* WrapEffectContext(
 	KEX_VTBL_REPLACING_ENTRY rpl[] = {
 		{offsetof(IUnknownVtbl, Release), IID2D1EffectContext_Release, KEX_VTBL_REPLACING_ALL}
 	};
-	if (!KexVtblWrap(effectCtx, rpl, IID2D1EffectContext2Vtbl, 1, ARRAYSIZE(IID2D1EffectContext2Vtbl),
+	if (!KexVtblWrapInterface(effectCtx, rpl, IID2D1EffectContext2Vtbl, 1, ARRAYSIZE(IID2D1EffectContext2Vtbl),
 						sizeof(IID2D1EffectContext2) - sizeof(KEX_VTBL_WRAPPER), (PPKEX_VTBL_WRAPPER)&ctx2))
 		return NULL;
 
@@ -289,7 +289,7 @@ HRESULT STDMETHODCALLTYPE IID2D1EffectImpl_Release(
 	if (RefCount == 1)
 	{
 		This->lpVtbl->Release(This->Thi);
-		KexVtblUnwrap(&lpVtbl);
+		KexVtblUnwrapInterface(&lpVtbl);
 	}
 
 	return RefCount - 1;
@@ -327,7 +327,7 @@ ID2D1EffectImpl* WrapEffectImpl(
 		{offsetof(IUnknownVtbl, Release), IID2D1EffectImpl_Release, KEX_VTBL_REPLACING_ALL},
 		{offsetof(ID2D1EffectImplVtbl, Initialize), IID2D1EffectImpl_Initialize, KEX_VTBL_REPLACING_EXTERNAL_ONLY}
 	};
-	if (!KexVtblWrap(effectRef, rpl, NULL, ARRAYSIZE(rpl), sizeof(ID2D1EffectImplVtbl) / sizeof(PVOID) + 10/*Reserved space*/,
+	if (!KexVtblWrapInterface(effectRef, rpl, NULL, ARRAYSIZE(rpl), sizeof(ID2D1EffectImplVtbl) / sizeof(PVOID) + 10/*Reserved space*/,
 						sizeof(IID2D1EffectImpl) - sizeof(KEX_VTBL_WRAPPER), (PPKEX_VTBL_WRAPPER)&ctx2))
 		return NULL;
 

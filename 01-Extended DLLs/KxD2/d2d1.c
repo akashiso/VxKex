@@ -68,7 +68,7 @@ HRESULT WINAPI Ext_D2D1CreateFactory(
 				else {
 					PVOID lpVtbl;
 					PVOID lpVtbl0 = factory->lpVtbl;
-					KexVtblGetWrapperContext(factory, NULL, &lpVtbl);
+					KexVtblQueryWrapperContext(factory, NULL, &lpVtbl);
 					factory->lpVtbl = lpVtbl;
 
 					//IID2D_RegisterBuiltinEffects(factory->Thi);
