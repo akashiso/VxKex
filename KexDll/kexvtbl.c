@@ -76,7 +76,7 @@ KEXAPI NTSTATUS NTAPI KexVtblPatchInplace(
 			OverlappedStart = max(Record->PatchedVtbl, VtblPtr);
 			OverlappedEnd = min(Record->PatchedVtbl + Record->NumberOfFuncs, VtblPtr + MaxOffset);
 
-			if (Record->PatchedVtbl == VtblPtr || OverlappedStart < OverlappedEnd) {
+			if (OverlappedStart < OverlappedEnd) {
 				RtlEndWeakEnumerationHashTable(RewriteRecordTable, &Enumerator);
 				Status = STATUS_ADDRESS_ALREADY_EXISTS;
 				goto Exit;
@@ -96,7 +96,7 @@ KEXAPI NTSTATUS NTAPI KexVtblPatchInplace(
 	NewRecord->AuthorModuleAddr = ReturnAddress();
 	NewRecord->NumberOfFuncs = MaxOffset;
 	NewRecord->PrevPendingDelete = NULL;
-	CopyMemory(NewRecord->OriginalVtblBackup, VtblPtr, MaxOffset * sizeof(PVOID));
+	RtlCopyMemory(NewRecord->OriginalVtblBackup, VtblPtr, MaxOffset * sizeof(PVOID));
 
 	//
 	// Modify the table inplace. We have to change the memory protection
@@ -198,7 +198,7 @@ BOOL KexVtblRestorePatchedTable(
 	}
 
 	try {
-		CopyMemory(Record->PatchedVtbl, Record->OriginalVtblBackup, Record->NumberOfFuncs * sizeof(PVOID));
+		RtlCopyMemory(Record->PatchedVtbl, Record->OriginalVtblBackup, Record->NumberOfFuncs * sizeof(PVOID));
 	} except(GetExceptionCode() == STATUS_ACCESS_VIOLATION)
 	{
 		//
@@ -464,7 +464,7 @@ KEXAPI BOOLEAN NTAPI KexVtblWrapInterface(
 
 		if (NT_SUCCESS(Status)) {
 			ModuleAddrStart = DllEntry->DllBase;
-			ModuleAddrEnd = (PVOID)((PBYTE)DllEntry->DllBase + DllEntry->SizeOfImage);
+			ModuleAddrEnd = (PBYTE)DllEntry->DllBase + DllEntry->SizeOfImage;
 		}
 		else {
 			ModuleAddrStart = NULL;
